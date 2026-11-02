@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, Phone, Mail, X, Building2, Clock3, Download, UserRound, Briefcase } from 'lucide-react';
+import { useScope, useCan } from '@/lib/access';
 import { useCRM } from '@/store/crm';
 import { usePhone } from '@/store/phone';
 import { useUI, toast } from '@/store/ui';
@@ -16,7 +17,10 @@ const personaTone: Record<Contact['persona'], Tone> = { 'Decision maker': 'brand
 const PAGE = 20;
 
 export default function Contacts() {
-  const { contacts, companies, reps } = useCRM();
+  const { companies, reps } = useCRM();
+  const scope = useScope();
+  const can = useCan();
+  const contacts = scope.contacts;
   const dial = usePhone((s) => s.dial);
   const open = useUI((s) => s.open);
   const [params, setParams] = useSearchParams();
@@ -37,15 +41,15 @@ export default function Contacts() {
     <div>
       <PageHeader title="Contacts" subtitle={`${contacts.length} people across ${companies.length} accounts`}
         actions={<>
-          <Button icon={<Download />} onClick={() => downloadCSV('leadvico-contacts.csv', rows.map((c) => ({ name: `${c.firstName} ${c.lastName}`, title: c.title, company: companies.find((x) => x.id === c.companyId)?.name, email: c.email, phone: c.phone, persona: c.persona })))}>Export</Button>
+          {can('export') && <Button icon={<Download />} onClick={() => downloadCSV('leadvico-contacts.csv', rows.map((c) => ({ name: `${c.firstName} ${c.lastName}`, title: c.title, company: companies.find((x) => x.id === c.companyId)?.name, email: c.email, phone: c.phone, persona: c.persona })))}>Export</Button>}
           <Button variant="primary" icon={<Plus />} onClick={() => open({ kind: 'contact' })}>New contact</Button>
         </>} />
       <Card className="overflow-hidden">
         <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2.5">
           <SearchInput value={q} onChange={setQ} placeholder="Search people, titles, companies…" className="w-full sm:w-72" />
           <FilterChip label="Role" values={persona} onChange={setPersona} options={(['Decision maker', 'Champion', 'Influencer', 'End user', 'Blocker'] as const).map((p) => ({ value: p, label: p }))} />
-          <FilterChip label="Company" icon={<Building2 />} values={cos} onChange={setCos} options={companies.map((c) => ({ value: c.id, label: c.name, icon: <CompanyLogo name={c.name} hue={c.hue} size={16} /> }))} />
-          <FilterChip label="Owner" values={owners} onChange={setOwners} options={reps.map((r) => ({ value: r.id, label: r.name, icon: <Avatar name={r.name} hue={r.hue} size={16} /> }))} />
+          <FilterChip label="Company" icon={<Building2 />} values={cos} onChange={setCos} options={scope.companies.map((c) => ({ value: c.id, label: c.name, icon: <CompanyLogo name={c.name} hue={c.hue} size={16} /> }))} />
+          <FilterChip label="Owner" values={owners} onChange={setOwners} options={(scope.admin ? reps : scope.teamReps).map((r) => ({ value: r.id, label: r.name, icon: <Avatar name={r.name} hue={r.hue} size={16} /> }))} />
           <span className="num ml-auto text-xs text-muted">{rows.length} contacts</span>
         </div>
         <div className="scroll-x">

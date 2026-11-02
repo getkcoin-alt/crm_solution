@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, List, CalendarDays, Phone, Mail, Users, RotateCcw, Presentation, ChevronLeft, ChevronRight, MoreHorizontal, Trash2, CalendarClock, AlarmClock, CheckCircle2, Clock3, ListTodo, ChevronDown } from 'lucide-react';
+import { useScope, useCan } from '@/lib/access';
 import { useCRM, ME, resolveRef } from '@/store/crm';
 import { usePhone } from '@/store/phone';
 import { useUI, toast } from '@/store/ui';
@@ -21,6 +22,7 @@ const typeMeta: Record<TaskType, { icon: typeof Phone; color: string }> = {
 
 function TaskRow({ t }: { t: Task }) {
   const { toggleTask, updateTask, deleteTask } = useCRM();
+  const canDelete = useCan()('delete');
   const dial = usePhone((s) => s.dial);
   const party = t.ref ? resolveRef(t.ref) : undefined;
   const M = typeMeta[t.type];
@@ -50,8 +52,7 @@ function TaskRow({ t }: { t: Task }) {
             { label: 'In 1 hour', icon: <AlarmClock />, onClick: () => { updateTask(t.id, { dueAt: Date.now() + HOUR }); toast({ title: 'Snoozed 1 hour' }); } },
             { label: 'Tomorrow 9:00', icon: <CalendarClock />, onClick: () => { updateTask(t.id, { dueAt: startOfDay() + DAY + 9 * HOUR }); toast({ title: 'Moved to tomorrow' }); } },
             { label: 'Next week', icon: <CalendarDays />, onClick: () => { updateTask(t.id, { dueAt: startOfDay() + 7 * DAY + 9 * HOUR }); toast({ title: 'Moved to next week' }); } },
-            { divider: true },
-            { label: 'Delete task', icon: <Trash2 />, danger: true, onClick: () => { deleteTask(t.id); toast({ title: 'Task deleted' }); } },
+            ...(canDelete ? [{ divider: true }, { label: 'Delete task', icon: <Trash2 />, danger: true, onClick: () => { deleteTask(t.id); toast({ title: 'Task deleted' }); } }] : []),
           ]} />
       </div>
     </div>
@@ -121,15 +122,17 @@ function WeekView({ tasks }: { tasks: Task[] }) {
 }
 
 export default function Tasks() {
-  const { tasks, reps } = useCRM();
+  const scope = useScope();
+  const { tasks } = scope;
+  const reps = scope.admin ? scope.teamReps : scope.peers;
   const open = useUI((s) => s.open);
   const [view, setView] = useState<'list' | 'week'>('list');
-  const [scope, setScope] = useState<'mine' | 'team'>('mine');
+  const [teamScope, setTeamScope] = useState<'mine' | 'team'>('mine');
   const [types, setTypes] = useState<TaskType[]>([]);
   const [owners, setOwners] = useState<string[]>([]);
   const [showDone, setShowDone] = useState(false);
 
-  const list = useMemo(() => tasks.filter((t) => (scope === 'team' || t.ownerId === ME) && (!types.length || types.includes(t.type)) && (!owners.length || owners.includes(t.ownerId))).sort((a, b) => a.dueAt - b.dueAt), [tasks, scope, types, owners]);
+  const list = useMemo(() => tasks.filter((t) => (teamScope === 'team' || t.ownerId === ME) && (!types.length || types.includes(t.type)) && (!owners.length || owners.includes(t.ownerId))).sort((a, b) => a.dueAt - b.dueAt), [tasks, teamScope, types, owners]);
   const today = startOfDay();
   const open_ = list.filter((t) => !t.done);
   const groups: { key: string; label: string; items: Task[]; tone?: string }[] = [
@@ -145,7 +148,7 @@ export default function Tasks() {
     <div>
       <PageHeader title="Follow-ups" subtitle="Tasks, reminders and meetings — never let a warm lead go cold."
         actions={<>
-          <Segmented value={scope} onChange={setScope} options={[{ value: 'mine', label: 'My tasks' }, { value: 'team', label: 'Team' }]} />
+          {scope.role !== 'Account Executive' && scope.role !== 'SDR' && <Segmented value={teamScope} onChange={setTeamScope} options={[{ value: 'mine', label: 'My tasks' }, { value: 'team', label: scope.admin ? 'Everyone' : 'My team' }]} />}
           <Segmented value={view} onChange={setView} options={[{ value: 'list', label: 'List', icon: <List /> }, { value: 'week', label: 'Week', icon: <CalendarDays /> }]} />
           <Button variant="primary" icon={<Plus />} onClick={() => open({ kind: 'task' })}>New task</Button>
         </>} />
@@ -158,7 +161,7 @@ export default function Tasks() {
       <Card className="overflow-hidden">
         <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2.5">
           <FilterChip label="Type" values={types} onChange={setTypes} options={(Object.keys(typeMeta) as TaskType[]).map((t) => { const I = typeMeta[t].icon; return { value: t, label: t, icon: <I style={{ color: typeMeta[t].color }} /> }; })} />
-          {scope === 'team' && <FilterChip label="Assignee" values={owners} onChange={setOwners} options={reps.map((r) => ({ value: r.id, label: r.name, icon: <Avatar name={r.name} hue={r.hue} size={16} /> }))} />}
+          {teamScope === 'team' && <FilterChip label="Assignee" values={owners} onChange={setOwners} options={reps.map((r) => ({ value: r.id, label: r.name, icon: <Avatar name={r.name} hue={r.hue} size={16} /> }))} />}
           <span className="num ml-auto text-xs text-muted">{open_.length} open</span>
         </div>
         {view === 'week' ? <WeekView tasks={list} /> : (

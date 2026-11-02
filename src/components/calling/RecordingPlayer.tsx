@@ -1,10 +1,24 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Pause, Play, Download, Gauge } from 'lucide-react';
+import { Pause, Play, Download, Gauge, Lock } from 'lucide-react';
+import { useCan } from '@/lib/access';
+import { ME } from '@/store/crm';
 import { cn, duration } from '@/lib/utils';
 import { toast } from '@/store/ui';
 
 /** Simulated call-recording player with a deterministic waveform. */
-export function RecordingPlayer({ seed, length, compact }: { seed: string; length: number; compact?: boolean }) {
+export function RecordingPlayer(props: { seed: string; length: number; compact?: boolean; ownerId?: string }) {
+  const can = useCan();
+  if (props.ownerId && props.ownerId !== ME && !can('recordings')) {
+    return (
+      <div className="flex items-center gap-2.5 rounded-xl bg-sunken px-3 py-2.5 text-xs text-muted shadow-[inset_0_0_0_1px_rgb(var(--line))]">
+        <Lock className="size-3.5 shrink-0" />Recording restricted — your role can only play your own calls.
+      </div>
+    );
+  }
+  return <Player {...props} />;
+}
+
+function Player({ seed, length, compact }: { seed: string; length: number; compact?: boolean }) {
   const [playing, setPlaying] = useState(false);
   const [pos, setPos] = useState(0);
   const [speed, setSpeed] = useState(1);

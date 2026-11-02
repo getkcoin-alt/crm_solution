@@ -3,7 +3,9 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   Phone, Mail, CalendarPlus, Briefcase, MoreHorizontal, Star, MapPin, Building2, Globe2, Users2, Clock3, Sparkles, ExternalLink, Copy, Trash2, ArrowLeft, CheckCircle2, PhoneCall, TrendingUp, ChevronRight, Tag,
 } from 'lucide-react';
-import { useCRM } from '@/store/crm';
+import { useCRM, ME } from '@/store/crm';
+import { useScope, useCan } from '@/lib/access';
+import { NoAccess } from '@/components/layout/ViewAs';
 import { usePhone } from '@/store/phone';
 import { useUI, toast } from '@/store/ui';
 import { Avatar, Badge, Button, Card, CardHeader, IconButton, Progress, ScoreRing, scoreTone, EmptyState } from '@/components/ui/primitives';
@@ -29,7 +31,10 @@ export default function LeadProfile() {
   const dial = usePhone((s) => s.dial);
   const open = useUI((s) => s.open);
   const [tab, setTab] = useState<Tab>('activity');
+  const scope = useScope();
+  const can = useCan();
 
+  if (lead && !scope.refIds.has(lead.id)) return <NoAccess what={`${lead.firstName} ${lead.lastName}’s record — it belongs to another team`} />;
   if (!lead) return <EmptyState icon={<Users2 />} title="Lead not found" body="It may have been deleted or merged." action={<Button onClick={() => nav('/leads')}>Back to leads</Button>} />;
 
   const name = `${lead.firstName} ${lead.lastName}`;
@@ -80,8 +85,7 @@ export default function LeadProfile() {
                 { label: 'Copy email', icon: <Copy />, onClick: () => copy(lead.email) },
                 { label: 'View on LinkedIn', icon: <ExternalLink />, onClick: () => toast({ title: 'Opening LinkedIn profile…' }) },
                 { label: 'Add to sequence', icon: <Tag />, onClick: () => toast({ title: 'Enrolled in “Inbound fast-track”' }) },
-                { divider: true },
-                { label: 'Delete lead', icon: <Trash2 />, danger: true, onClick: () => { deleteLeads([lead.id]); toast({ title: 'Lead deleted' }); nav('/leads'); } },
+                ...(can('delete') ? [{ divider: true }, { label: 'Delete lead', icon: <Trash2 />, danger: true, onClick: () => { deleteLeads([lead.id]); toast({ title: 'Lead deleted' }); nav('/leads'); } }] : [])
               ]} />
           </div>
         </div>
@@ -89,7 +93,7 @@ export default function LeadProfile() {
         <div className="relative grid grid-cols-2 border-t sm:grid-cols-3 lg:grid-cols-6 [&>*]:border-line">
           {[
             { k: 'Status', v: <Select value={lead.status} onChange={(v) => { updateLead(lead.id, { status: v }); toast({ title: `Status → ${v}` }); }} options={LEAD_STATUSES.map((s) => ({ value: s.value, label: s.value }))} renderValue={() => <LeadStatusBadge status={lead.status} />} className="!h-7 !w-auto !bg-transparent !px-0 !shadow-none" width={180} /> },
-            { k: 'Owner', v: <RepSelect value={lead.ownerId} onChange={(v) => { updateLead(lead.id, { ownerId: v }); toast({ title: 'Lead reassigned' }); }} allowUnassigned size="sm" className="!-ml-1 !w-auto !max-w-[170px] !bg-transparent !px-1 !shadow-none hover:!bg-sunken" /> },
+            { k: 'Owner', v: !can('editOthers') && lead.ownerId !== ME ? <RepChip id={lead.ownerId} /> : <RepSelect value={lead.ownerId} onChange={(v) => { updateLead(lead.id, { ownerId: v }); toast({ title: 'Lead reassigned' }); }} allowUnassigned size="sm" className="!-ml-1 !w-auto !max-w-[170px] !bg-transparent !px-1 !shadow-none hover:!bg-sunken" /> },
             { k: 'Est. value', v: <span className="num text-[15px] font-semibold">{money(lead.estValue)}</span> },
             { k: 'Source', v: <span className="text-[13px] font-medium">{lead.source}</span> },
             { k: 'Calls · talk time', v: <span className="num text-[13px] font-medium">{calls.length} · {durationWords(talk)}</span> },
@@ -130,7 +134,7 @@ export default function LeadProfile() {
                       <RepChip id={c.repId} />
                     </div>
                     {c.notes && <p className="mt-2 text-[13px] text-fg-2">{c.notes}</p>}
-                    {c.recorded && <div className="mt-2.5"><RecordingPlayer seed={c.id} length={c.duration} /></div>}
+                    {c.recorded && <div className="mt-2.5"><RecordingPlayer ownerId={c.repId} seed={c.id} length={c.duration} /></div>}
                   </div>
                 ))}
                 {!calls.length && <EmptyState icon={<PhoneCall />} title="No calls yet" body="Start the first conversation." action={<Button variant="primary" icon={<Phone />} onClick={() => dial(ref)}>Call {lead.firstName}</Button>} />}

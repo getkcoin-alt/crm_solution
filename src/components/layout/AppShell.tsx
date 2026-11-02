@@ -9,6 +9,8 @@ import { GlobalModals } from '../modals';
 import { Toaster } from '../shared';
 import { useUI } from '@/store/ui';
 import { usePrefs } from '@/store/prefs';
+import { ViewAsBanner, NoAccess } from './ViewAs';
+import { useNavAccess } from '@/lib/access';
 
 export function AppShell() {
   const mobileNav = useUI((s) => s.mobileNav);
@@ -16,6 +18,9 @@ export function AppShell() {
   const currency = usePrefs((s) => s.currency);
   const loc = useLocation();
   const nav = useNavigate();
+  const access = useNavAccess();
+  const base = '/' + (loc.pathname.split('/')[1] ?? '');
+  const allowed = access[base] ?? true;
 
   useEffect(() => { document.getElementById('main')?.scrollTo({ top: 0 }); }, [loc.pathname]);
 
@@ -48,8 +53,9 @@ export function AppShell() {
       )}
       <div id="main" className="flex min-w-0 flex-1 flex-col overflow-y-auto">
         <Topbar />
+        <ViewAsBanner />
         <main key={currency} className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          <Outlet />
+          {allowed ? <Outlet /> : <NoAccess what={`the ${base.slice(1)} area`} />}
         </main>
       </div>
       <Softphone />

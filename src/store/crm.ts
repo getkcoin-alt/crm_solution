@@ -43,7 +43,9 @@ interface CRM {
   markAllRead: () => void;
 }
 
-const me = seed.CURRENT_USER_ID;
+/** The signed-in user. A live binding so “View as” can switch persona at runtime. */
+export let ME: string = seed.CURRENT_USER_ID;
+export const setME = (id: string) => { ME = id; };
 
 export const useCRM = create<CRM>()((set, get) => ({
   reps: seed.reps,
@@ -62,7 +64,7 @@ export const useCRM = create<CRM>()((set, get) => ({
     const { score, factors } = seed.computeScore({ ...l, lastActivityAt: now });
     const lead: Lead = { ...l, id: uid('ld'), createdAt: now, lastActivityAt: now, score, scoreFactors: factors };
     set((s) => ({ leads: [lead, ...s.leads] }));
-    get().addActivity({ type: 'created', at: now, repId: me, ref: { type: 'lead', id: lead.id }, title: `Lead created manually`, body: `Source: ${lead.source}` });
+    get().addActivity({ type: 'created', at: now, repId: ME, ref: { type: 'lead', id: lead.id }, title: `Lead created manually`, body: `Source: ${lead.source}` });
     return lead;
   },
   updateLead: (id, patch, opts) => {
@@ -82,10 +84,10 @@ export const useCRM = create<CRM>()((set, get) => ({
     if (opts?.silent) return;
     const ref: EntityRef = { type: 'lead', id };
     if (patch.status && patch.status !== prev.status)
-      get().addActivity({ type: 'status', at: Date.now(), repId: me, ref, title: `Status changed to ${patch.status}`, body: `Previously ${prev.status}` });
+      get().addActivity({ type: 'status', at: Date.now(), repId: ME, ref, title: `Status changed to ${patch.status}`, body: `Previously ${prev.status}` });
     if (patch.ownerId !== undefined && patch.ownerId !== prev.ownerId) {
       const rep = get().reps.find((r) => r.id === patch.ownerId);
-      get().addActivity({ type: 'status', at: Date.now(), repId: me, ref, title: rep ? `Assigned to ${rep.name}` : 'Unassigned' });
+      get().addActivity({ type: 'status', at: Date.now(), repId: ME, ref, title: rep ? `Assigned to ${rep.name}` : 'Unassigned' });
     }
   },
   bulkUpdateLeads: (ids, patch) => ids.forEach((id) => get().updateLead(id, patch)),
@@ -98,7 +100,7 @@ export const useCRM = create<CRM>()((set, get) => ({
     if (!company) {
       company = {
         id: uid('co'), name: lead.company, domain: lead.email.split('@')[1] ?? '', industry: lead.industry, employees: lead.employees,
-        revenue: lead.employees * 180_000, city: lead.city, country: lead.country, ownerId: lead.ownerId ?? me,
+        revenue: lead.employees * 180_000, city: lead.city, country: lead.country, ownerId: lead.ownerId ?? ME,
         tier: lead.employees > 4000 ? 'Strategic' : lead.employees > 1000 ? 'Key' : 'Standard', hue: (lead.company.length * 37) % 360,
         health: 72, description: `${lead.industry} organisation converted from lead.`, createdAt: Date.now(),
       };
@@ -106,15 +108,15 @@ export const useCRM = create<CRM>()((set, get) => ({
     }
     const contact = get().addContact({
       firstName: lead.firstName, lastName: lead.lastName, title: lead.title, companyId: company.id, email: lead.email, phone: lead.phone,
-      ownerId: lead.ownerId ?? me, tags: ['Converted lead'], timezone: 'America/New_York', persona: 'Champion',
+      ownerId: lead.ownerId ?? ME, tags: ['Converted lead'], timezone: 'America/New_York', persona: 'Champion',
     });
     const deal = get().addDeal({
-      name: `${lead.company.split(' ')[0]} — New business`, companyId: company.id, contactId: contact.id, ownerId: lead.ownerId ?? me,
+      name: `${lead.company.split(' ')[0]} — New business`, companyId: company.id, contactId: contact.id, ownerId: lead.ownerId ?? ME,
       stage: 'Discovery', value: lead.estValue, closeDate: Date.now() + 45 * 864e5, product: 'Platform · Growth', priority: lead.score > 75 ? 'High' : 'Medium',
       nextStep: 'Run discovery call', leadId: lead.id,
     });
     get().updateLead(id, { status: 'Converted', dealId: deal.id });
-    get().addActivity({ type: 'deal', at: Date.now(), repId: me, ref: { type: 'lead', id }, title: `Converted to deal · ${deal.name}`, body: 'Contact and company records created' });
+    get().addActivity({ type: 'deal', at: Date.now(), repId: ME, ref: { type: 'lead', id }, title: `Converted to deal · ${deal.name}`, body: 'Contact and company records created' });
     return deal;
   },
 
@@ -145,7 +147,7 @@ export const useCRM = create<CRM>()((set, get) => ({
   addTask: (t) => {
     const task: Task = { ...t, id: uid('tk'), done: false };
     set((s) => ({ tasks: [task, ...s.tasks] }));
-    if (t.ref) get().addActivity({ type: 'task', at: Date.now(), repId: me, ref: t.ref, title: `Task scheduled · ${t.title}`, body: new Date(t.dueAt).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) });
+    if (t.ref) get().addActivity({ type: 'task', at: Date.now(), repId: ME, ref: t.ref, title: `Task scheduled · ${t.title}`, body: new Date(t.dueAt).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) });
     return task;
   },
   updateTask: (id, patch) => set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)) })),
@@ -180,7 +182,6 @@ export const useCRM = create<CRM>()((set, get) => ({
 }));
 
 /* ───────────────────────── Selectors / helpers ───────────────────────── */
-export const ME = me;
 
 export function useRep(id?: string | null) {
   return useCRM((s) => (id ? s.reps.find((r) => r.id === id) : undefined));

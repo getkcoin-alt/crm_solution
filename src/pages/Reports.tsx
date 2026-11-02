@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Download, TrendingUp, PhoneCall, Filter, LineChart as LineIcon, Sparkles, CalendarRange, FileText, Mail } from 'lucide-react';
 import { useCRM } from '@/store/crm';
+import { useScope, useCan } from '@/lib/access';
 import { toast } from '@/store/ui';
 import { revenueHistory } from '@/data/seed';
 import { PageHeader, ChartTooltip, Legend, StatTile, StageBadge, RepChip } from '@/components/shared';
@@ -18,12 +19,20 @@ function Insight({ children }: { children: React.ReactNode }) {
 }
 
 export default function Reports() {
-  const { deals, calls, leads, reps, stages } = useCRM();
-  const [tab, setTab] = useState<Tab>('sales');
+  const { stages } = useCRM();
+  const scope = useScope();
+  const can = useCan();
+  const { deals, calls, leads } = scope;
+  const reps = scope.teamReps;
+  const sdr = scope.role === 'SDR';
+  const [tabState, setTab] = useState<Tab>(sdr ? 'calls' : 'sales');
+  const tab: Tab = sdr && (tabState === 'sales' || tabState === 'forecast') ? 'calls' : tabState;
+  const allReps = useCRM((s) => s.reps);
+  const share = scope.admin ? 1 : Math.max(0.08, sum(reps, (r) => r.quota) / Math.max(1, sum(allReps, (r) => r.quota)));
   const [range, setRange] = useState('30');
 
   /* ── Sales ── */
-  const winLoss = revenueHistory.map((r, i) => ({ month: r.month, won: toCurrency(r.won), lost: toCurrency(Math.round(r.won * (0.32 + ((i * 37) % 17) / 60))) }));
+  const winLoss = revenueHistory.map((r, i) => ({ month: r.month, won: toCurrency(r.won * share), lost: toCurrency(Math.round(r.won * share * (0.32 + ((i * 37) % 17) / 60))) }));
   const lost = deals.filter((d) => d.stage === 'Closed Lost');
   const reasons = Object.entries(lost.reduce<Record<string, number>>((a, d) => { a[d.lostReason ?? 'Other'] = (a[d.lostReason ?? 'Other'] ?? 0) + 1; return a; }, {})).sort((a, b) => b[1] - a[1]);
   const byProduct = Object.entries(deals.filter((d) => d.stage !== 'Closed Lost').reduce<Record<string, number>>((a, d) => { a[d.product] = (a[d.product] ?? 0) + d.value; return a; }, {})).sort((a, b) => b[1] - a[1]).map(([name, value], i) => ({ name, value: toCurrency(value), color: PALETTE[i]! }));
@@ -93,13 +102,13 @@ export default function Reports() {
         actions={<>
           <Select value={range} onChange={setRange} className="!w-40" options={[{ value: '7', label: 'Last 7 days' }, { value: '14', label: 'Last 14 days' }, { value: '30', label: 'Last 30 days' }]} />
           <Button icon={<Mail />} onClick={() => toast({ tone: 'success', title: 'Weekly digest scheduled', body: 'Every Monday 8:00 AM to the leadership team' })}>Schedule</Button>
-          <Button variant="primary" icon={<Download />} onClick={exportCurrent}>Export</Button>
+          {can('export') && <Button variant="primary" icon={<Download />} onClick={exportCurrent}>Export</Button>}
         </>} />
       <Tabs className="mb-5" value={tab} onChange={setTab} tabs={[
-        { value: 'sales', label: 'Sales performance', icon: <TrendingUp /> },
+        ...(sdr ? [] : [{ value: 'sales' as Tab, label: 'Sales performance', icon: <TrendingUp /> }]),
         { value: 'calls', label: 'Calling analytics', icon: <PhoneCall /> },
         { value: 'leads', label: 'Lead conversion', icon: <Filter /> },
-        { value: 'forecast', label: 'Forecast', icon: <LineIcon /> },
+        ...(sdr ? [] : [{ value: 'forecast' as Tab, label: 'Forecast', icon: <LineIcon /> }]),
       ]} />
 
       {tab === 'sales' && (
@@ -123,7 +132,7 @@ export default function Reports() {
               {reasons.map(([r, n]) => (
                 <div key={r}><div className="mb-1 flex justify-between text-xs"><span className="text-fg-2">{r}</span><span className="num font-semibold">{n} · {pct(n / lost.length)}</span></div><Progress value={n / reasons[0]![1]} tone="danger" height={6} /></div>
               ))}
-              <Insight>“Chose competitor” losses cluster in <b>Proposal</b> stage — consider earlier competitive positioning.</Insight>
+              {lost.length > 0 && <Insight>“Chose competitor” losses cluster in <b>Proposal</b> stage — consider earlier competitive positioning.</Insight>}
             </div>
           </Card>
           <Card>

@@ -2,13 +2,16 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, Users2, KanbanSquare, Contact2, Building2, Phone, CalendarCheck2, Trophy, BarChart3, Settings, UserPlus, Briefcase, CalendarPlus, PhoneIncoming, Moon, Plug, CornerDownLeft, Search, Handshake,
+  LayoutDashboard, Users2, KanbanSquare, Contact2, Building2, Phone, CalendarCheck2, Trophy, BarChart3, Settings, UserPlus, Briefcase, CalendarPlus, PhoneIncoming, Moon, Plug, Eye, CornerDownLeft, Search, Handshake,
 } from 'lucide-react';
 import { useCRM } from '@/store/crm';
 import { useUI } from '@/store/ui';
 import { usePhone } from '@/store/phone';
 import { usePrefs, applyTheme } from '@/store/prefs';
 import { useTelephony } from '@/store/telephony';
+import { useScope, useNavAccess } from '@/lib/access';
+import { PERSONAS } from '@/store/session';
+import { switchPersona } from './ViewAs';
 import { Avatar, CompanyLogo, Kbd } from '../ui/primitives';
 import { cn, money } from '@/lib/utils';
 
@@ -22,7 +25,9 @@ export function CommandPalette() {
   const [q, setQ] = useState('');
   const [idx, setIdx] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
-  const { leads, contacts, deals, companies } = useCRM();
+  const { leads, contacts, deals, companies } = useScope();
+  const access = useNavAccess();
+  const reps = useCRM((s) => s.reps);
 
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
@@ -49,7 +54,9 @@ export function CommandPalette() {
       { id: 'a5', group: 'Actions', label: 'Toggle dark mode', icon: <Moon />, run: () => { const t = document.documentElement.classList.contains('dark') ? 'light' : 'dark'; usePrefs.getState().setTheme(t); applyTheme(t); } },
     ];
     const term = q.trim().toLowerCase();
-    if (!term) return [...actions, ...nav_];
+    const allowedNav = nav_.filter((n) => access[n.id.slice(3).replace(/^\/$/, '/')] !== false);
+    const personas: Item[] = PERSONAS.map((p) => { const r = reps.find((x) => x.id === p.repId)!; return { id: `va${r.id}`, group: 'View as', label: `${r.name}`, sub: `${r.role} panel`, icon: <Eye />, run: () => switchPersona(r.id) }; });
+    if (!term) return [...actions, ...allowedNav, ...personas];
     const m = (s: string) => s.toLowerCase().includes(term);
     const res: Item[] = [
       ...leads.filter((l) => m(`${l.firstName} ${l.lastName} ${l.company} ${l.email}`)).slice(0, 6).map((l) => ({
@@ -60,10 +67,10 @@ export function CommandPalette() {
       })),
       ...deals.filter((d) => m(d.name)).slice(0, 4).map((d) => ({ id: d.id, group: 'Deals', label: d.name, sub: `${d.stage} · ${money(d.value, { compact: true })}`, icon: <Handshake />, run: go(`/pipeline?deal=${d.id}`) })),
       ...companies.filter((c) => m(c.name)).slice(0, 4).map((c) => ({ id: c.id, group: 'Companies', label: c.name, sub: `${c.industry} · ${c.city}`, icon: <CompanyLogo name={c.name} hue={c.hue} size={20} />, run: go(`/companies?id=${c.id}`) })),
-      ...[...actions, ...nav_].filter((i) => m(i.label)),
+      ...[...actions, ...allowedNav, ...personas].filter((i) => m(`${i.label} ${i.sub ?? ''}`)),
     ];
     return res;
-  }, [q, leads, contacts, deals, companies, nav, openModal]);
+  }, [q, leads, contacts, deals, companies, nav, openModal, access, reps]);
 
   useEffect(() => { setIdx(0); }, [q]);
   useEffect(() => { listRef.current?.querySelector(`[data-idx="${idx}"]`)?.scrollIntoView({ block: 'nearest' }); }, [idx]);

@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell } from 'recharts';
-import { ArrowUpRight, Phone, Target, Wallet, Percent, Users2, PhoneCall, Sparkles, CalendarCheck2, Flame, Clock3, ChevronRight, Download } from 'lucide-react';
+import { ArrowUpRight, Phone, Target, Wallet, Percent, Users2, PhoneCall, Sparkles, CalendarCheck2, Flame, Clock3, ChevronRight, Download, Trophy } from 'lucide-react';
+import type { Call } from '@/types';
 import { useCRM, ME, quarterRevenue, resolveRef } from '@/store/crm';
+import { useScope, useCan } from '@/lib/access';
 import { usePhone } from '@/store/phone';
 import { revenueHistory, QUARTER_START } from '@/data/seed';
 import { Avatar, Badge, Button, Card, CardHeader, Delta, Progress, ScoreRing, IconButton } from '@/components/ui/primitives';
@@ -36,7 +38,12 @@ function Kpi({ label, value, delta, icon, spark, color, sub, to }: { label: stri
 }
 
 export default function Dashboard() {
-  const { deals, leads, calls, tasks, reps, activities, toggleTask } = useCRM();
+  const toggleTask = useCRM((s) => s.toggleTask);
+  const reps = useCRM((s) => s.reps);
+  const scope = useScope();
+  const can = useCan();
+  const { deals, leads, calls, tasks, activities, role } = scope;
+  const isSDR = role === 'SDR';
   const dial = usePhone((s) => s.dial);
   const nav = useNavigate();
   const [range, setRange] = useState<Range>('30');
@@ -47,7 +54,7 @@ export default function Dashboard() {
 
   const m = useMemo(() => {
     const won = quarterRevenue(deals);
-    const quota = sum(reps, (r) => r.quota);
+    const quota = sum(scope.teamReps, (r) => r.quota);
     const open = deals.filter((d) => !d.stage.startsWith('Closed'));
     const pipeline = sum(open, (d) => d.value);
     const weighted = sum(open, (d) => d.value * d.probability);
@@ -68,7 +75,7 @@ export default function Dashboard() {
       pace: (won / quota) / (daysElapsed / qLen),
       daysLeft: Math.max(0, Math.round(qLen - daysElapsed)),
     };
-  }, [deals, leads, calls, reps, since, prevSince, now]);
+  }, [deals, leads, calls, scope.teamReps, since, prevSince, now]);
 
   const callsByDay = useMemo(() => {
     const out: number[] = [];
@@ -81,7 +88,9 @@ export default function Dashboard() {
     return out;
   }, [leads]);
 
-  const revData = revenueHistory.map((r) => ({ ...r, won: toCurrency(r.won), target: toCurrency(r.target) }));
+  const share = (() => { const tq = sum(reps, (r) => r.quota); return role === 'Admin' || !tq ? 1 : Math.max(0.08, m.quota / tq); })();
+  const hist = revenueHistory.map((r) => ({ ...r, won: Math.round(r.won * share), target: Math.round(r.target * share), pipeline: Math.round(r.pipeline * share) }));
+  const revData = hist.map((r) => ({ ...r, won: toCurrency(r.won), target: toCurrency(r.target) }));
   const stages = useCRM((s) => s.stages).filter((s) => !s.id.startsWith('Closed'));
   const byStage = stages.map((s) => { const ds = deals.filter((d) => d.stage === s.id); return { ...s, count: ds.length, value: sum(ds, (d) => d.value) }; });
   const maxStage = Math.max(...byStage.map((s) => s.value));
@@ -100,7 +109,7 @@ export default function Dashboard() {
   }, [calls, now]);
   const heatMax = Math.max(...heat.flat());
 
-  const leaderboard = reps.filter((r) => r.role !== 'Admin' && r.role !== 'SDR')
+  const leaderboard = scope.peers.filter((r) => r.role !== 'Admin' && r.role !== 'SDR')
     .map((r) => ({ r, won: quarterRevenue(deals, r.id), att: quarterRevenue(deals, r.id) / r.quota }))
     .sort((a, b) => b.won - a.won).slice(0, 5);
 
@@ -117,12 +126,13 @@ export default function Dashboard() {
           <div className="text-xs font-medium text-muted">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</div>
           <h1 className="mt-1 text-[24px] font-semibold tracking-[-0.025em]">{greet}, {me.name.split(' ')[0]}</h1>
           <p className="mt-1 max-w-2xl text-[13px] text-muted">
-            You’re at <b className="font-semibold text-fg">{pct(m.won / m.quota)}</b> of the quarterly target with {m.daysLeft} days left — pacing <b className={cn('font-semibold', m.pace >= 1 ? 'text-success' : 'text-warning')}>{pct(m.pace)}</b> of plan. {agenda.filter((a) => !a.done).length} follow-ups need your attention today.
+            {isSDR ? <>You’ve made <b className="font-semibold text-fg">{calls.filter((c) => c.startedAt >= startOfDay()).length}</b> calls today and booked <b className="font-semibold text-fg">{calls.filter((c) => c.disposition === 'Meeting booked' && c.startedAt > now - 30 * DAY).length}</b> meetings this month. {agenda.filter((a) => !a.done).length} follow-ups are due today.</>
+            : <>{role === 'Sales Manager' ? 'Your team is' : role === 'Account Executive' ? 'You’re' : 'You’re'} at <b className="font-semibold text-fg">{pct(m.won / Math.max(1, m.quota))}</b> of the quarterly target with {m.daysLeft} days left — pacing <b className={cn('font-semibold', m.pace >= 1 ? 'text-success' : 'text-warning')}>{pct(m.pace)}</b> of plan. {agenda.filter((a) => !a.done).length} follow-ups need your attention today.</>}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Segmented value={range} onChange={setRange} options={[{ value: '7', label: '7 days' }, { value: '30', label: '30 days' }, { value: 'qtd', label: 'Quarter' }]} />
-          <Button icon={<Download />} onClick={() => downloadCSV('leadvico-revenue.csv', revenueHistory.map((r) => ({ month: r.month, won_usd: r.won, target_usd: r.target, pipeline_usd: r.pipeline })))}>Export</Button>
+          {can('export') && <Button icon={<Download />} onClick={() => downloadCSV('leadvico-revenue.csv', hist.map((r) => ({ month: r.month, won_usd: r.won, target_usd: r.target, pipeline_usd: r.pipeline })))}>Export</Button>}
         </div>
       </div>
 
@@ -130,20 +140,28 @@ export default function Dashboard() {
 
       {/* KPI row */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Kpi to="/reports" label="Revenue · QTD" value={money(m.won, { compact: true })} delta={0.184} sub={`of ${money(m.quota, { compact: true })} target`} icon={<Wallet />} color="#5856ee" spark={revenueHistory.map((r) => r.won)} />
-        <Kpi to="/pipeline" label="Open pipeline" value={money(m.pipeline, { compact: true })} delta={0.072} sub={`${money(m.weighted, { compact: true })} weighted`} icon={<Target />} color="#8b6cf6" spark={revenueHistory.map((r) => r.pipeline)} />
+        {isSDR ? (<>
+          <Kpi to="/calls" label="Calls today" value={num(calls.filter((c) => c.startedAt >= startOfDay()).length)} delta={0.12} sub="Target 60 / day" icon={<PhoneCall />} color="#e8a23b" spark={callsByDay} />
+          <Kpi to="/calls" label="Connect rate" value={pct(m.connected / Math.max(1, m.rCalls.length))} delta={0.04} sub={`${m.connected} conversations`} icon={<Percent />} color="#22a06b" spark={callsByDay.map((v) => v * 0.6)} />
+          <Kpi to="/tasks" label="Meetings booked" value={num(calls.filter((c) => c.disposition === 'Meeting booked' && c.startedAt > now - 30 * DAY).length)} delta={0.21} sub="Last 30 days · target 20" icon={<CalendarCheck2 />} color="#5856ee" spark={leadsByDay} />
+          <Kpi to="/leads" label="Leads to work" value={num(leads.filter((l) => l.status === 'New' || l.status === 'Contacted').length)} delta={m.leadsDelta} sub={`${leads.filter((l) => !l.ownerId).length} unassigned in pool`} icon={<Users2 />} color="#8b6cf6" spark={leadsByDay} />
+        </>) : (<>
+        <Kpi to="/reports" label="Revenue · QTD" value={money(m.won, { compact: true })} delta={0.184} sub={`of ${money(m.quota, { compact: true })} target`} icon={<Wallet />} color="#5856ee" spark={hist.map((r) => r.won)} />
+        <Kpi to="/pipeline" label="Open pipeline" value={money(m.pipeline, { compact: true })} delta={0.072} sub={`${money(m.weighted, { compact: true })} weighted`} icon={<Target />} color="#8b6cf6" spark={hist.map((r) => r.pipeline)} />
         <Kpi to="/leads" label="New leads" value={num(m.leadsIn)} delta={m.leadsDelta} sub={`${pct(m.conv)} qualify rate`} icon={<Users2 />} color="#22a06b" spark={leadsByDay} />
         <Kpi to="/calls" label="Calls made" value={num(m.rCalls.length)} delta={m.callsDelta} sub={`${pct(m.connected / Math.max(1, m.rCalls.length))} connect rate`} icon={<PhoneCall />} color="#e8a23b" spark={callsByDay} />
+        </>)}
       </div>
 
+      {isSDR ? <SdrPerformance calls={calls} /> : (
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         {/* Revenue chart */}
         <Card className="xl:col-span-2">
           <CardHeader title="Revenue performance" subtitle="Closed-won revenue vs. target · trailing 12 months"
             action={<Legend items={[{ label: 'Closed won', color: 'rgb(var(--brand))' }, { label: 'Target', color: 'rgb(var(--faint))', dashed: true }]} />} />
           <div className="flex flex-wrap gap-x-8 gap-y-2 px-4 pb-1 pt-1">
-            <div><div className="text-2xs font-medium text-muted">Trailing 12M</div><div className="num text-lg font-semibold">{money(sum(revenueHistory, (r) => r.won), { compact: true })}</div></div>
-            <div><div className="text-2xs font-medium text-muted">Attainment</div><div className="num text-lg font-semibold">{pct(sum(revenueHistory, (r) => r.won) / sum(revenueHistory, (r) => r.target))}</div></div>
+            <div><div className="text-2xs font-medium text-muted">Trailing 12M</div><div className="num text-lg font-semibold">{money(sum(hist, (r) => r.won), { compact: true })}</div></div>
+            <div><div className="text-2xs font-medium text-muted">Attainment</div><div className="num text-lg font-semibold">{pct(sum(hist, (r) => r.won) / sum(hist, (r) => r.target))}</div></div>
             <div><div className="text-2xs font-medium text-muted">Win rate</div><div className="num text-lg font-semibold">{pct(m.winRate)}</div></div>
             <div><div className="text-2xs font-medium text-muted">Avg. deal size</div><div className="num text-lg font-semibold">{money(sum(deals, (d) => d.value) / deals.length, { compact: true })}</div></div>
           </div>
@@ -188,6 +206,7 @@ export default function Dashboard() {
           </div>
         </Card>
       </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
         {/* Agenda */}
@@ -234,9 +253,10 @@ export default function Dashboard() {
           </div>
         </Card>
 
+        {isSDR ? <SdrLeaderboard /> : (<>
         {/* Leaderboard */}
         <Card className="lg:col-span-2 xl:col-span-1">
-          <CardHeader title="Quota leaderboard" subtitle="Quarter to date" action={<Link to="/team" className="text-xs font-medium text-brand hover:underline">Team</Link>} />
+          <CardHeader title="Quota leaderboard" subtitle={role === 'Admin' ? 'Quarter to date · all teams' : `Quarter to date · ${scope.viewer.team} team`} action={<Link to="/team" className="text-xs font-medium text-brand hover:underline">Team</Link>} />
           <div className="space-y-1 px-2 pb-3">
             {leaderboard.map(({ r, won, att }, i) => (
               <div key={r.id} className="flex items-center gap-3 rounded-lg px-2 py-1.5">
@@ -256,6 +276,7 @@ export default function Dashboard() {
             ))}
           </div>
         </Card>
+        </>)}
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
@@ -357,5 +378,79 @@ export default function Dashboard() {
         </Card>
       </div>
     </div>
+  );
+}
+
+/* ───────────────────────── SDR panel widgets ───────────────────────── */
+function SdrPerformance({ calls }: { calls: Call[] }) {
+  const data = Array.from({ length: 14 }, (_, i) => {
+    const s0 = startOfDay() - (13 - i) * DAY;
+    const cs = calls.filter((c) => c.startedAt >= s0 && c.startedAt < s0 + DAY);
+    return { day: new Date(s0).toLocaleDateString('en-US', { weekday: 'short' }), calls: cs.length, connected: cs.filter((c) => c.status === 'completed').length };
+  });
+  const today = calls.filter((c) => c.startedAt >= startOfDay());
+  const week = calls.filter((c) => c.startedAt > Date.now() - 7 * DAY);
+  const targets = [
+    { label: 'Calls today', v: today.length, t: 60, tone: 'brand' as const },
+    { label: 'Conversations this week', v: week.filter((c) => c.status === 'completed').length, t: 40, tone: 'success' as const },
+    { label: 'Meetings booked this week', v: week.filter((c) => c.disposition === 'Meeting booked').length, t: 6, tone: 'warning' as const },
+  ];
+  return (
+    <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+      <Card className="xl:col-span-2">
+        <CardHeader title="My calling activity" subtitle="Dials vs. conversations · last 14 days" action={<Legend items={[{ label: 'Dials', color: 'rgb(var(--line-strong))' }, { label: 'Conversations', color: 'rgb(var(--brand))' }]} />} />
+        <div className="h-[250px] px-2 pb-3">
+          <ResponsiveContainer>
+            <ComposedChart data={data} margin={{ top: 12, right: 12, left: -16, bottom: 0 }} barGap={2}>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <XAxis dataKey="day" tickLine={false} axisLine={false} />
+              <YAxis tickLine={false} axisLine={false} allowDecimals={false} />
+              <Tooltip cursor={{ fill: 'rgb(var(--sunken))' }} content={<ChartTooltip />} />
+              <Bar dataKey="calls" name="Dials" fill="rgb(var(--line-strong))" radius={[4, 4, 0, 0]} maxBarSize={18} />
+              <Bar dataKey="connected" name="Conversations" fill="rgb(var(--brand))" radius={[4, 4, 0, 0]} maxBarSize={18} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
+      <Card>
+        <CardHeader title="My targets" icon={<Target />} subtitle="Set by your manager" />
+        <div className="space-y-4 px-4 pb-4 pt-1">
+          {targets.map((x) => (
+            <div key={x.label}>
+              <div className="mb-1.5 flex items-baseline justify-between text-xs"><span className="text-fg-2">{x.label}</span><span className="num font-semibold">{x.v}<span className="font-normal text-faint"> / {x.t}</span></span></div>
+              <Progress value={x.v / x.t} tone={x.tone} height={7} />
+            </div>
+          ))}
+          <div className="flex items-start gap-2 rounded-lg bg-brand/[.06] px-3 py-2.5 text-[12.5px] leading-[1.45] text-fg-2 ring-1 ring-inset ring-brand/15"><Sparkles className="mt-0.5 size-3.5 shrink-0 text-brand" />Vico AI: your connect rate peaks 10–11 AM. Block that hour for the power dialer.</div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function SdrLeaderboard() {
+  const reps = useCRM((s) => s.reps);
+  const calls = useCRM((s) => s.calls);
+  const rows = reps.filter((r) => r.role === 'SDR').map((r) => {
+    const cs = calls.filter((c) => c.repId === r.id && c.startedAt > Date.now() - 30 * DAY);
+    return { r, meetings: cs.filter((c) => c.disposition === 'Meeting booked').length, dials: cs.length };
+  }).sort((a, b) => b.meetings - a.meetings);
+  const max = Math.max(1, ...rows.map((x) => x.meetings));
+  return (
+    <Card className="lg:col-span-2 xl:col-span-1">
+      <CardHeader title="SDR leaderboard" subtitle="Meetings booked · last 30 days" icon={<Trophy />} />
+      <div className="space-y-1 px-2 pb-3">
+        {rows.map(({ r, meetings, dials }, i) => (
+          <div key={r.id} className={cn('flex items-center gap-3 rounded-lg px-2 py-1.5', r.id === ME && 'bg-brand/[.05]')}>
+            <span className={cn('num w-4 text-center text-xs font-semibold', i === 0 ? 'text-warning' : 'text-faint')}>{i + 1}</span>
+            <Avatar name={r.name} hue={r.hue} size={28} presence={r.presence} />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-2"><span className="truncate text-[13px] font-medium">{r.name}{r.id === ME && <span className="text-faint"> (you)</span>}</span><span className="num text-xs font-semibold">{meetings} mtgs</span></div>
+              <div className="mt-1 flex items-center gap-2"><Progress value={meetings / max} height={5} /><span className="num w-14 text-right text-[11px] text-muted">{dials} dials</span></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }

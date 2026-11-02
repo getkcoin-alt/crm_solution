@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { usePhone } from '@/store/phone';
 import { usePrefs } from '@/store/prefs';
-import { useCRM } from '@/store/crm';
+import { useCRM, ME } from '@/store/crm';
 import { toast } from '@/store/ui';
 import { useTelephony } from '@/store/telephony';
 import { providerById } from '@/data/providers';
@@ -122,7 +122,7 @@ function ActiveCall() {
     if (!connected || s.onHold || !liveTranscript) return;
     const i = setInterval(() => {
       const st = usePhone.getState();
-      if (st.transcript.length < transcriptScript.length) st.pushTranscript(transcriptScript[st.transcript.length]!);
+      if (st.transcript.length < transcriptScript.length) { const line = transcriptScript[st.transcript.length]!; const first = useCRM.getState().reps.find((r) => r.id === ME)?.name.split(' ')[0] ?? 'Aisha'; st.pushTranscript({ ...line, text: line.text.replace('Aisha', first) }); }
     }, 3400);
     return () => clearInterval(i);
   }, [connected, s.onHold, liveTranscript]);

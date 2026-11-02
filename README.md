@@ -27,7 +27,10 @@ Live demo: https://demo.leadvico.com (deployed on Vercel from `main`).
 | **Team** | Podium, rep cards with quota attainment, sortable leaderboard, rep drawer with activity chart, invite teammates |
 | **Reports** | Sales performance, calling analytics, conversion funnel and source quality, forecast (commit/best case), CSV export |
 | **Telephony integration** | Guided setup for Exotel, Knowlarity, MyOperator, Plivo, Twilio and Vonage: provider picker, credentials with “where to find these” hints, connection check, number import and default caller ID, webhook URL, calling mode (via my mobile, browser, or SIM app) with mobile number verification by code. Opened from the Dashboard banner, Calling page, Settings → Calling / Integrations, or ⌘K |
+| **Role-based panels (View as)** | Login screen with four demo panels — Admin (Aisha), Sales Manager (Daniel), Account Executive (Marcus), SDR (Zara). Switch any time from the top-bar pill, the sidebar profile card or ⌘K. Each panel has its own data scope (all / team / own book + lead pool), navigation, dashboard (SDRs get a calling-targets home) and permissions. Toggling a permission in Settings → Roles & permissions applies instantly |
 | **Settings** | Profile, theme (light/dark/system), workspace currency (USD/EUR/GBP/INR, applied across the app), users and roles, permission matrix, pipeline stages, calling configuration, notifications, integrations |
+
+Demo logins (any password): aisha@ / daniel@ / marcus@ / zara@leadvico.com.
 
 Shortcuts: `⌘K` command palette · `L` new lead · `D` new deal · `T` new task · `C` calling.
 

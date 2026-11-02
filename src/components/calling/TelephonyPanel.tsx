@@ -6,12 +6,14 @@ import { toast } from '@/store/ui';
 import { Badge, Button } from '../ui/primitives';
 import { ProviderMark } from './TelephonyWizard';
 import { cn, relTime } from '@/lib/utils';
+import { useCan } from '@/lib/access';
 
 const modeIcon: Record<CallMode, typeof Monitor> = { bridge: PhoneForwarded, browser: Monitor, sim: Smartphone };
 
 /** Compact status / call-to-action strip for the Calling page and Dashboard. */
 export function TelephonyBanner({ dismissible }: { dismissible?: boolean }) {
   const t = useTelephony();
+  const isAdmin = useCan()('manageUsers');
   const p = useActiveProvider();
   const [hidden, setHidden] = useState(false);
   if (p) {
@@ -22,11 +24,12 @@ export function TelephonyBanner({ dismissible }: { dismissible?: boolean }) {
         <span className="flex items-center gap-2.5"><ProviderMark p={p} size={26} /><span className="text-[13px] font-semibold">{p.name}</span><Badge tone="success" dot>Live</Badge></span>
         <span className="flex items-center gap-1.5 text-xs text-muted"><I className="size-3.5" />{MODE_META[t.mode].title}{t.mode !== 'browser' && t.myMobile && <span className="num text-fg-2">· {t.myMobile}</span>}</span>
         <span className="flex items-center gap-1.5 text-xs text-muted"><Phone className="size-3.5" />Caller ID <span className="num text-fg-2">{t.defaultNumber}</span></span>
-        <button onClick={() => t.openWizard(p.id)} className="ml-auto text-xs font-semibold text-brand hover:underline">Manage</button>
+        <button onClick={() => t.openWizard(p.id)} className="ml-auto text-xs font-semibold text-brand hover:underline">{isAdmin ? 'Manage' : 'My setup'}</button>
       </div>
     );
   }
   if (hidden) return null;
+  if (!isAdmin) return dismissible ? null : <div className="mb-4 flex items-center gap-2 rounded-xl bg-surface px-4 py-2.5 text-xs text-muted shadow-card"><Plug className="size-3.5" />Demo calling mode — your admin hasn’t connected a telephony provider yet.</div>;
   return (
     <div className="relative mb-4 overflow-hidden rounded-xl bg-surface p-4 shadow-card">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_120%_at_0%_0%,rgb(var(--brand)/.10),transparent_60%)]" />
@@ -50,12 +53,13 @@ export function TelephonyBanner({ dismissible }: { dismissible?: boolean }) {
 export function TelephonySettings() {
   const t = useTelephony();
   const p = useActiveProvider();
+  const isAdmin = useCan()('manageUsers');
   return (
     <div className="space-y-4">
       <div className="card animate-fade-in">
         <div className="flex items-start justify-between gap-4 border-b px-5 py-4">
           <div><div className="text-[14px] font-semibold">Telephony provider</div><div className="mt-0.5 text-xs text-muted">The carrier that places calls, provides numbers and stores recordings.</div></div>
-          {p && <div className="flex gap-1.5"><Button size="sm" icon={<RefreshCw />} onClick={() => t.openWizard(p.id)}>Reconfigure</Button><Button size="sm" variant="ghost" className="!text-danger" icon={<Unplug />} onClick={() => { t.disconnect(); toast({ title: `${p.name} disconnected`, body: 'Calls are back in demo mode.' }); }}>Disconnect</Button></div>}
+          {p && isAdmin && <div className="flex gap-1.5"><Button size="sm" icon={<RefreshCw />} onClick={() => t.openWizard(p.id)}>Reconfigure</Button><Button size="sm" variant="ghost" className="!text-danger" icon={<Unplug />} onClick={() => { t.disconnect(); toast({ title: `${p.name} disconnected`, body: 'Calls are back in demo mode.' }); }}>Disconnect</Button></div>}
         </div>
         <div className="p-5">
           {p ? (
@@ -67,6 +71,8 @@ export function TelephonySettings() {
                 <div className="mt-2 flex flex-wrap gap-1">{p.features.map((f) => <Badge key={f}>{f}</Badge>)}</div>
               </div>
             </div>
+          ) : !isAdmin ? (
+            <div className="flex items-center gap-2 text-xs text-muted"><ShieldCheck className="size-3.5" />No provider connected yet — calls run in demo mode. Ask your workspace admin to connect one.</div>
           ) : (
             <div>
               <div className="mb-3 flex items-center gap-2 text-xs text-muted"><ShieldCheck className="size-3.5" />No provider connected — calls are simulated. Pick one to start the guided setup.</div>

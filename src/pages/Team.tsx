@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Trophy, PhoneCall, Target, Wallet, UserPlus, X, Mail, Phone, Medal, ArrowUp, ArrowDown, Headphones, CalendarCheck2 } from 'lucide-react';
 import { useCRM, resolveRef } from '@/store/crm';
+import { useScope, useCan } from '@/lib/access';
 import { toast } from '@/store/ui';
 import { repStats, type RepStats } from '@/lib/metrics';
 import { PageHeader, StatTile, Sparkline, ChartTooltip, StageBadge, CallIcon } from '@/components/shared';
@@ -15,13 +16,16 @@ type SortKey = 'revenue' | 'attainment' | 'pipeline' | 'winRate' | 'calls30' | '
 const attColor = (a: number) => (a >= 0.6 ? '#22a06b' : a >= 0.3 ? 'rgb(var(--brand))' : '#e8a23b');
 
 export default function Team() {
-  const { reps, deals, calls, leads } = useCRM();
+  const { deals, calls, leads } = useCRM();
+  const scope = useScope();
+  const can = useCan();
+  const reps = scope.admin ? scope.teamReps : scope.peers;
   const [team, setTeam] = useState<'all' | TeamT>('all');
   const [sort, setSort] = useState<{ k: SortKey; d: 1 | -1 }>({ k: 'revenue', d: -1 });
   const [openRep, setOpenRep] = useState<string | null>(null);
   const [invite, setInvite] = useState(false);
 
-  const stats = useMemo(() => reps.filter((r) => r.role !== 'Admin' && (team === 'all' || r.team === team)).map((r) => repStats(r, deals, calls, leads)), [reps, deals, calls, leads, team]);
+  const stats = useMemo(() => reps.filter((r) => scope.role !== 'Account Executive' || r.role !== 'SDR').filter((r) => r.role !== 'Admin' && (team === 'all' || r.team === team)).map((r) => repStats(r, deals, calls, leads)), [reps, deals, calls, leads, team]);
   const sorted = [...stats].sort((a, b) => (a[sort.k] - b[sort.k]) * sort.d);
   const top = [...stats].sort((a, b) => b.revenue - a.revenue);
   const quota = sum(stats, (s) => s.rep.quota);
@@ -35,10 +39,10 @@ export default function Team() {
 
   return (
     <div>
-      <PageHeader title="Team" subtitle={`${reps.length} members · ${reps.filter((r) => r.presence === 'online' || r.presence === 'on-call').length} online now`}
+      <PageHeader title={scope.admin ? 'Team' : `${scope.viewer.team} team`} subtitle={`${reps.length} members · ${reps.filter((r) => r.presence === 'online' || r.presence === 'on-call').length} online now`}
         actions={<>
-          <Segmented value={team} onChange={setTeam} options={[{ value: 'all', label: 'All teams' }, { value: 'Enterprise', label: 'Enterprise' }, { value: 'Mid-Market', label: 'Mid-Market' }, { value: 'Growth', label: 'Growth' }]} />
-          <Button variant="primary" icon={<UserPlus />} onClick={() => setInvite(true)}>Invite</Button>
+          {scope.admin && <Segmented value={team} onChange={setTeam} options={[{ value: 'all', label: 'All teams' }, { value: 'Enterprise', label: 'Enterprise' }, { value: 'Mid-Market', label: 'Mid-Market' }, { value: 'Growth', label: 'Growth' }]} />}
+          {can('manageUsers') && <Button variant="primary" icon={<UserPlus />} onClick={() => setInvite(true)}>Invite</Button>}
         </>} />
 
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -130,6 +134,7 @@ export default function Team() {
 }
 
 function RepDrawer({ stats: s, onClose }: { stats: RepStats; onClose: () => void }) {
+  const canMonitor = useCan()('monitor');
   const { deals, calls } = useCRM();
   const open = deals.filter((d) => d.ownerId === s.rep.id && !d.stage.startsWith('Closed')).sort((a, b) => b.value - a.value);
   const recent = calls.filter((c) => c.repId === s.rep.id).slice(0, 6);
@@ -146,7 +151,7 @@ function RepDrawer({ stats: s, onClose }: { stats: RepStats; onClose: () => void
             <div className="mt-2 flex gap-2">
               <Button size="sm" icon={<Mail />} onClick={() => toast({ title: 'Message sent', body: `to ${s.rep.email}` })}>Message</Button>
               <Button size="sm" icon={<Phone />} onClick={() => toast({ title: `Calling ${s.rep.name.split(' ')[0]}…`, body: 'Internal call via leadVico' })}>Call</Button>
-              {s.rep.presence === 'on-call' && <Button size="sm" icon={<Headphones />} onClick={() => toast({ title: 'Live coaching started', body: 'Whisper mode enabled' })}>Listen in</Button>}
+              {s.rep.presence === 'on-call' && canMonitor && <Button size="sm" icon={<Headphones />} onClick={() => toast({ title: 'Live coaching started', body: 'Whisper mode enabled' })}>Listen in</Button>}
             </div>
           </div>
           <RadialProgress value={s.attainment} size={72} stroke={6} color={attColor(s.attainment)}><div className="text-center"><div className="num text-[14px] font-semibold">{pct(s.attainment)}</div><div className="text-[9.5px] text-muted">of quota</div></div></RadialProgress>

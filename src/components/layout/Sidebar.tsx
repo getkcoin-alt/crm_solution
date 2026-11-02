@@ -3,6 +3,9 @@ import {
   LayoutDashboard, Users2, KanbanSquare, Contact2, Building2, Phone, CalendarCheck2, Trophy, BarChart3, Settings, PanelLeftClose, PanelLeft, Sparkles, X,
 } from 'lucide-react';
 import { useCRM, ME } from '@/store/crm';
+import { useScope, useNavAccess, ROLE_TONE, ROLE_SHORT } from '@/lib/access';
+import { ViewAsMenu } from './ViewAs';
+import { Badge } from '../ui/primitives';
 import { usePrefs } from '@/store/prefs';
 import { usePhone } from '@/store/phone';
 import { useUI } from '@/store/ui';
@@ -33,8 +36,10 @@ export function Sidebar({ mobile }: { mobile?: boolean }) {
   const setMobileNav = useUI((s) => s.setMobileNav);
   const setCmdk = useUI((s) => s.setCmdk);
   const me = useCRM((s) => s.reps.find((r) => r.id === ME)!);
-  const dueToday = useCRM((s) => s.tasks.filter((t) => !t.done && t.ownerId === ME && t.dueAt < startOfDay() + DAY).length);
-  const newLeads = useCRM((s) => s.leads.filter((l) => l.status === 'New').length);
+  const scope = useScope();
+  const access = useNavAccess();
+  const dueToday = scope.tasks.filter((t) => !t.done && t.ownerId === ME && t.dueAt < startOfDay() + DAY).length;
+  const newLeads = scope.leads.filter((l) => l.status === 'New').length;
   const phone = usePhone((s) => s.status);
   const loc = useLocation();
 
@@ -96,10 +101,10 @@ export function Sidebar({ mobile }: { mobile?: boolean }) {
       )}
 
       <nav className={cn('flex-1 space-y-4 overflow-y-auto px-3 py-2', collapsed && 'px-2')}>
-        {groups.map((g) => (
+        {groups.filter((g) => g.items.some((it) => access[it.to] !== false)).map((g) => (
           <div key={g.label}>
             {!collapsed && <div className="eyebrow mb-1 px-2">{g.label}</div>}
-            <div className="space-y-0.5">{g.items.map(item)}</div>
+            <div className="space-y-0.5">{g.items.filter((it) => access[it.to] !== false).map(item)}</div>
           </div>
         ))}
       </nav>
@@ -115,13 +120,19 @@ export function Sidebar({ mobile }: { mobile?: boolean }) {
       <div className={cn('border-t p-3', collapsed && 'px-2')}>
         {item({ to: '/settings', label: 'Settings', icon: Settings })}
         <div className={cn('mt-2 flex items-center gap-2.5 rounded-lg p-1.5', collapsed && 'justify-center')}>
-          <Avatar name={me.name} hue={me.hue} size={28} presence={phone === 'connected' ? 'on-call' : 'online'} />
-          {!collapsed && (
-            <div className="min-w-0 flex-1 leading-tight">
-              <div className="truncate text-[13px] font-semibold">{me.name}</div>
-              <div className="truncate text-[11px] text-muted">{me.title}</div>
-            </div>
-          )}
+          <div className="min-w-0 flex-1">
+            <ViewAsMenu trigger={({ toggle }) => (
+              <button onClick={toggle} title="Switch panel (View as)" className={cn('flex w-full min-w-0 items-center gap-2.5 rounded-md p-0.5 text-left transition hover:bg-line/60', collapsed && 'justify-center')}>
+                <Avatar name={me.name} hue={me.hue} size={28} presence={phone === 'connected' ? 'on-call' : 'online'} />
+                {!collapsed && (
+                  <div className="min-w-0 flex-1 leading-tight">
+                    <div className="flex items-center gap-1.5"><span className="truncate text-[13px] font-semibold">{me.name}</span><Badge tone={ROLE_TONE[me.role]} className="!h-4 !px-1 !text-[10px]">{ROLE_SHORT[me.role]}</Badge></div>
+                    <div className="truncate text-[11px] text-muted">{me.title}</div>
+                  </div>
+                )}
+              </button>
+            )} />
+          </div>
           {!mobile && !collapsed && (
             <button onClick={toggle} title="Collapse sidebar" className="rounded-md p-1.5 text-faint hover:bg-sunken hover:text-fg"><PanelLeftClose className="size-4" /></button>
           )}

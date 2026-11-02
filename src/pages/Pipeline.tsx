@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, LayoutGrid, Table2, CalendarDays, Flag, Phone, Mail, Building2, User2, X, Trophy, Clock3, Target, Check, ArrowUpRight, Users2, AlertTriangle } from 'lucide-react';
-import { useCRM, resolveRef } from '@/store/crm';
+import { useScope, useCan } from '@/lib/access';
+import { useCRM, resolveRef, ME } from '@/store/crm';
 import { usePhone } from '@/store/phone';
 import { useUI, toast } from '@/store/ui';
 import { PageHeader, RepChip, RepSelect, StageBadge } from '@/components/shared';
@@ -50,7 +51,9 @@ function DealCard({ d, onOpen, dragging, onDragStart, onDragEnd }: { d: Deal; on
 }
 
 export default function Pipeline() {
-  const { deals, stages, reps, moveDeal, companies } = useCRM();
+  const { stages, reps, moveDeal, companies } = useCRM();
+  const scope = useScope();
+  const deals = scope.deals;
   const open = useUI((s) => s.open);
   const [params, setParams] = useSearchParams();
   const [view, setView] = useState<'board' | 'table'>('board');
@@ -96,7 +99,7 @@ export default function Pipeline() {
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <SearchInput value={q} onChange={setQ} placeholder="Search deals or companies…" className="w-full sm:w-64" />
-        <FilterChip label="Owner" icon={<Users2 />} values={owners} onChange={setOwners} options={reps.filter((r) => r.role !== 'SDR').map((r) => ({ value: r.id, label: r.name, icon: <Avatar name={r.name} hue={r.hue} size={16} /> }))} />
+        <FilterChip label="Owner" icon={<Users2 />} values={owners} onChange={setOwners} options={(scope.admin ? reps : scope.teamReps).filter((r) => r.role !== 'SDR').map((r) => ({ value: r.id, label: r.name, icon: <Avatar name={r.name} hue={r.hue} size={16} /> }))} />
         <FilterChip label="Priority" icon={<Flag />} values={prio} onChange={setPrio} options={['High', 'Medium', 'Low'].map((p) => ({ value: p, label: p }))} />
         <div className="ml-auto hidden items-center gap-4 text-xs text-muted lg:flex">
           <span className="flex items-center gap-1.5"><Target className="size-3.5" />Avg. deal <b className="num font-semibold text-fg">{money(total / Math.max(1, open_.length), { compact: true })}</b></span>
@@ -225,6 +228,7 @@ function LostModal({ id, onClose }: { id: string; onClose: () => void }) {
 function DealDrawer({ id, onClose, onLost }: { id: string; onClose: () => void; onLost: () => void }) {
   const d = useCRM((s) => s.deals.find((x) => x.id === id));
   const { stages, moveDeal, updateDeal } = useCRM();
+  const canEdit = useCan()('editOthers');
   const co = useCRM((s) => s.companies.find((c) => c.id === d?.companyId));
   const ct = useCRM((s) => s.contacts.find((c) => c.id === d?.contactId));
   const dial = usePhone((s) => s.dial);
@@ -270,7 +274,7 @@ function DealDrawer({ id, onClose, onLost }: { id: string; onClose: () => void; 
           <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <div className="label">Owner</div>
-              <RepSelect value={d.ownerId} onChange={(v) => { if (v) { updateDeal(d.id, { ownerId: v }); toast({ title: 'Owner updated' }); } }} />
+              {!canEdit && d.ownerId !== ME ? <div className="flex h-8 items-center"><RepChip id={d.ownerId} /></div> : <RepSelect value={d.ownerId} onChange={(v) => { if (v) { updateDeal(d.id, { ownerId: v }); toast({ title: 'Owner updated' }); } }} />}
             </div>
             <div>
               <div className="label">Next step</div>

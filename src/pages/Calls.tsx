@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import {
   Phone, PhoneIncoming, PhoneCall, Delete, Clock3, Timer, PhoneMissed, Zap, Play, Square, ChevronDown, Search, SkipForward, Voicemail, Headphones, Activity, ArrowDownLeft, ArrowUpRight, Users2, CircleDot,
 } from 'lucide-react';
-import { useCRM, ME, resolveRef } from '@/store/crm';
+import { ME, resolveRef } from '@/store/crm';
+import { useScope, useCan } from '@/lib/access';
 import { usePhone } from '@/store/phone';
 import { toast } from '@/store/ui';
 import { PageHeader, CallIcon, RepChip, StatTile } from '@/components/shared';
@@ -22,7 +23,7 @@ function Dialer() {
   const [num, setNum] = useState('');
   const tel = useTelephony();
   const [callerId, setCallerId] = useState('default');
-  const { leads, contacts } = useCRM();
+  const { leads, contacts } = useScope();
   const dial = usePhone((s) => s.dial);
   const status = usePhone((s) => s.status);
   const matches = useMemo(() => {
@@ -86,7 +87,9 @@ function Dialer() {
 }
 
 function TeamPresence() {
-  const reps = useCRM((s) => s.reps);
+  const scope = useScope();
+  const canMonitor = useCan()('monitor');
+  const reps = scope.admin ? scope.teamReps : scope.peers;
   const order = { 'on-call': 0, online: 1, away: 2, offline: 3 } as const;
   const label = { 'on-call': 'On a call', online: 'Available', away: 'Away', offline: 'Offline' } as const;
   return (
@@ -97,7 +100,7 @@ function TeamPresence() {
           <div key={r.id} className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-sunken">
             <Avatar name={r.name} hue={r.hue} size={26} presence={r.presence} />
             <div className="min-w-0 flex-1"><div className="truncate text-[13px] font-medium">{r.name}</div><div className="text-[11px] text-muted">{label[r.presence]}{r.presence === 'on-call' && <span className="num"> · {r.id === 'rep_marcus' ? '12:41' : '04:08'}</span>}</div></div>
-            {r.presence === 'on-call' && <IconButton label="Listen in (whisper)" size="sm" onClick={() => toast({ title: `Listening to ${r.name.split(' ')[0]}’s call`, body: 'Whisper coaching mode — only the rep can hear you.' })}><Headphones className="size-3.5" /></IconButton>}
+            {r.presence === 'on-call' && canMonitor && r.id !== scope.viewer.id && <IconButton label="Listen in (whisper)" size="sm" onClick={() => toast({ title: `Listening to ${r.name.split(' ')[0]}’s call`, body: 'Whisper coaching mode — only the rep can hear you.' })}><Headphones className="size-3.5" /></IconButton>}
           </div>
         ))}
       </div>
@@ -106,7 +109,7 @@ function TeamPresence() {
 }
 
 function PowerDialer() {
-  const { leads, tasks } = useCRM();
+  const { leads, tasks } = useScope();
   const phone = usePhone();
   const [skipped, setSkipped] = useState<string[]>([]);
   const [called, setCalled] = useState<string[]>([]);
@@ -181,7 +184,9 @@ function PowerDialer() {
 }
 
 function CallLog({ missedOnly }: { missedOnly?: boolean }) {
-  const { calls, reps } = useCRM();
+  const { calls } = useScope();
+  const scopeR = useScope();
+  const reps = scopeR.admin ? scopeR.teamReps : scopeR.peers;
   const dial = usePhone((s) => s.dial);
   const [q, setQ] = useState('');
   const [dir, setDir] = useState<string[]>([]);
@@ -248,7 +253,7 @@ function CallLog({ missedOnly }: { missedOnly?: boolean }) {
                             {c.summary && <><div className="eyebrow mb-1 mt-3">Vico AI summary</div><p className="text-[13px] leading-[1.5] text-fg-2">{c.summary}</p></>}
                           </div>
                           <div>
-                            {c.recorded ? <><div className="eyebrow mb-1.5">Recording</div><RecordingPlayer seed={c.id} length={c.duration} /></> : <div className="text-xs text-faint">No recording for this call.</div>}
+                            {c.recorded ? <><div className="eyebrow mb-1.5">Recording</div><RecordingPlayer ownerId={c.repId} seed={c.id} length={c.duration} /></> : <div className="text-xs text-faint">No recording for this call.</div>}
                             {c.sentiment && <div className="mt-2 flex gap-1.5"><Badge tone={c.sentiment === 'positive' ? 'success' : c.sentiment === 'negative' ? 'danger' : 'neutral'}>Sentiment: {c.sentiment}</Badge><Badge>{c.direction}</Badge></div>}
                           </div>
                         </div>
@@ -268,7 +273,7 @@ function CallLog({ missedOnly }: { missedOnly?: boolean }) {
 }
 
 export default function Calls() {
-  const calls = useCRM((s) => s.calls);
+  const calls = useScope().calls;
   const simulate = usePhone((s) => s.simulateIncoming);
   const status = usePhone((s) => s.status);
   const [tab, setTab] = useState<Tab>('queue');

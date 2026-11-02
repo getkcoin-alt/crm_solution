@@ -104,7 +104,7 @@ export function Timeline({ entity, stickyTop = 'top-14' }: { entity: EntityRef; 
                         <p className="mt-0.5 text-[12.5px] leading-[1.5] text-fg-2">{call.summary}</p>
                       </div>
                     )}
-                    {call?.recorded && <div className="mt-2 max-w-[520px]"><RecordingPlayer seed={call.id} length={call.duration} compact /></div>}
+                    {call?.recorded && <div className="mt-2 max-w-[520px]"><RecordingPlayer ownerId={call.repId} seed={call.id} length={call.duration} compact /></div>}
                   </div>
                 </div>
               );

@@ -6,6 +6,8 @@ import { usePhone } from '@/store/phone';
 import { usePrefs, applyTheme } from '@/store/prefs';
 import { useUI } from '@/store/ui';
 import { Popover, Menu } from '../ui/overlay';
+import { ViewAsPill } from './ViewAs';
+import { useViewer } from '@/lib/access';
 import { Button, IconButton, Kbd } from '../ui/primitives';
 import { cn, duration, relTime } from '@/lib/utils';
 
@@ -41,6 +43,7 @@ export function PhonePill() {
 }
 
 export function Topbar() {
+  const viewerRole = useViewer().role;
   const loc = useLocation();
   const nav = useNavigate();
   const seg = loc.pathname.split('/')[1] ?? '';
@@ -70,13 +73,14 @@ export function Topbar() {
         </button>
         <IconButton label="Search" className="xl:hidden" onClick={() => setCmdk(true)}><Search className="size-4" /></IconButton>
         <PhonePill />
+        <ViewAsPill />
         <Menu
           width={230}
           trigger={({ toggle }) => <Button variant="primary" size="md" icon={<Plus />} onClick={toggle} className="max-sm:!w-8 max-sm:!px-0"><span className="max-sm:hidden">Create</span></Button>}
           items={[
             { heading: 'Create new' },
             { label: 'Lead', icon: <UserPlus />, onClick: () => open({ kind: 'lead' }), hint: 'L' },
-            { label: 'Deal', icon: <Briefcase />, onClick: () => open({ kind: 'deal' }), hint: 'D' },
+            ...(viewerRole !== 'SDR' ? [{ label: 'Deal', icon: <Briefcase />, onClick: () => open({ kind: 'deal' }), hint: 'D' }] : []),
             { label: 'Contact', icon: <Contact2 />, onClick: () => open({ kind: 'contact' }) },
             { label: 'Follow-up task', icon: <CalendarPlus />, onClick: () => open({ kind: 'task' }), hint: 'T' },
             { divider: true, label: '' },

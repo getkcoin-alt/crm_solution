@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Phone, Plus, Download, Upload, Star, ArrowUpDown, ArrowUp, ArrowDown, UserCheck, Trash2, Tag, Users2, SlidersHorizontal, Flame, Mail, X, CircleDot, Globe2, Gauge, MoreHorizontal, CalendarPlus, Briefcase } from 'lucide-react';
 import { useCRM, ME } from '@/store/crm';
+import { useScope, useCan } from '@/lib/access';
 import { usePhone } from '@/store/phone';
 import { useUI, toast } from '@/store/ui';
 import { PageHeader, LeadStatusBadge, RepChip, LEAD_STATUSES } from '@/components/shared';
@@ -16,7 +17,9 @@ type SortKey = 'name' | 'score' | 'company' | 'estValue' | 'lastActivityAt' | 'c
 const PAGE = 15;
 
 export default function Leads() {
-  const { leads, reps, updateLead, bulkUpdateLeads, deleteLeads, toggleStar } = { ...useCRM(), toggleStar: (l: Lead) => useCRM.getState().updateLead(l.id, { starred: !l.starred }, { silent: true }) };
+  const scope = useScope();
+  const can = useCan();
+  const { leads, reps, updateLead, bulkUpdateLeads, deleteLeads, toggleStar } = { ...useCRM(), leads: scope.leads, toggleStar: (l: Lead) => useCRM.getState().updateLead(l.id, { starred: !l.starred }, { silent: true }) };
   const dial = usePhone((s) => s.dial);
   const open = useUI((s) => s.open);
   const nav = useNavigate();
@@ -78,8 +81,8 @@ export default function Leads() {
         title="Leads"
         subtitle={`${leads.length} leads · ${counts.hot} hot · ${counts.unassigned} awaiting assignment`}
         actions={<>
-          <Button icon={<Upload />} onClick={() => setImportOpen(true)}>Import</Button>
-          <Button icon={<Download />} onClick={() => { exportRows(filtered); toast({ tone: 'success', title: 'Export ready', body: `${filtered.length} leads exported to CSV` }); }}>Export</Button>
+          {scope.role !== 'Account Executive' && scope.role !== 'SDR' && <Button icon={<Upload />} onClick={() => setImportOpen(true)}>Import</Button>}
+          {can('export') && <Button icon={<Download />} onClick={() => { exportRows(filtered); toast({ tone: 'success', title: 'Export ready', body: `${filtered.length} leads exported to CSV` }); }}>Export</Button>}
           <Button variant="primary" icon={<Plus />} onClick={() => open({ kind: 'lead' })}>New lead</Button>
         </>}
       />
@@ -102,7 +105,7 @@ export default function Leads() {
           <FilterChip label="Status" icon={<CircleDot />} values={status} onChange={(v) => { setStatus(v); setPage(0); }} options={LEAD_STATUSES.map((s) => ({ value: s.value, label: s.value, hint: String(leads.filter((l) => l.status === s.value).length) }))} />
           <FilterChip label="Score" icon={<Gauge />} values={temp} onChange={(v) => { setTemp(v); setPage(0); }} options={[{ value: 'Hot', label: 'Hot (75+)' }, { value: 'Warm', label: 'Warm (50–74)' }, { value: 'Cold', label: 'Cold (<50)' }]} />
           <FilterChip label="Source" icon={<Globe2 />} values={source} onChange={(v) => { setSource(v); setPage(0); }} options={(['Website', 'Referral', 'LinkedIn', 'Webinar', 'Cold outbound', 'Trade show', 'Partner', 'Paid search'] as LeadSource[]).map((s) => ({ value: s, label: s }))} />
-          <FilterChip label="Owner" icon={<Users2 />} values={owners} onChange={(v) => { setOwners(v); setPage(0); }} options={[{ value: '__none', label: 'Unassigned' }, ...reps.map((r) => ({ value: r.id, label: r.name, icon: <Avatar name={r.name} hue={r.hue} size={16} /> }))]} />
+          <FilterChip label="Owner" icon={<Users2 />} values={owners} onChange={(v) => { setOwners(v); setPage(0); }} options={[{ value: '__none', label: 'Unassigned' }, ...(scope.admin ? reps : scope.peers).map((r) => ({ value: r.id, label: r.name, icon: <Avatar name={r.name} hue={r.hue} size={16} /> }))]} />
           {activeFilters > 0 && <button onClick={() => { setStatus([]); setSource([]); setOwners([]); setTemp([]); }} className="text-xs font-medium text-muted hover:text-fg">Clear all</button>}
           <span className="ml-auto hidden items-center gap-1.5 text-xs text-muted md:flex"><SlidersHorizontal className="size-3.5" />{filtered.length} results</span>
         </div>
@@ -111,13 +114,13 @@ export default function Leads() {
           <div className="flex animate-fade-in flex-wrap items-center gap-2 border-b bg-brand/[.05] px-3 py-2">
             <span className="text-xs font-semibold text-brand">{sel.length} selected</span>
             <span className="mx-1 h-4 w-px bg-line-strong" />
-            <Menu align="start" trigger={({ toggle }) => <Button size="sm" icon={<UserCheck />} onClick={toggle}>Assign</Button>}
-              items={reps.map((r) => ({ label: r.name, icon: <Avatar name={r.name} hue={r.hue} size={16} />, onClick: () => { bulkUpdateLeads(sel, { ownerId: r.id }); toast({ tone: 'success', title: `${sel.length} leads assigned`, body: `Routed to ${r.name}` }); setSel([]); } }))} />
+            {can('editOthers') && <Menu align="start" trigger={({ toggle }) => <Button size="sm" icon={<UserCheck />} onClick={toggle}>Assign</Button>}
+              items={reps.map((r) => ({ label: r.name, icon: <Avatar name={r.name} hue={r.hue} size={16} />, onClick: () => { bulkUpdateLeads(sel, { ownerId: r.id }); toast({ tone: 'success', title: `${sel.length} leads assigned`, body: `Routed to ${r.name}` }); setSel([]); } }))} />}
             <Menu align="start" trigger={({ toggle }) => <Button size="sm" icon={<Tag />} onClick={toggle}>Set status</Button>}
               items={LEAD_STATUSES.map((s) => ({ label: s.value, onClick: () => { bulkUpdateLeads(sel, { status: s.value }); toast({ tone: 'success', title: 'Status updated', body: `${sel.length} leads → ${s.value}` }); setSel([]); } }))} />
             <Button size="sm" icon={<Mail />} onClick={() => { toast({ title: 'Sequence enrolled', body: `${sel.length} leads added to “Q4 Re-engagement” sequence` }); setSel([]); }}>Add to sequence</Button>
-            <Button size="sm" icon={<Download />} onClick={() => exportRows(leads.filter((l) => sel.includes(l.id)))}>Export</Button>
-            <Button size="sm" variant="ghost" className="!text-danger" icon={<Trash2 />} onClick={() => { const ids = sel; deleteLeads(ids); setSel([]); toast({ title: `${ids.length} leads deleted` }); }}>Delete</Button>
+            {can('export') && <Button size="sm" icon={<Download />} onClick={() => exportRows(leads.filter((l) => sel.includes(l.id)))}>Export</Button>}
+            {can('delete') && <Button size="sm" variant="ghost" className="!text-danger" icon={<Trash2 />} onClick={() => { const ids = sel; deleteLeads(ids); setSel([]); toast({ title: `${ids.length} leads deleted` }); }}>Delete</Button>}
             <button onClick={() => setSel([])} className="ml-auto rounded p-1 text-muted hover:bg-sunken"><X className="size-3.5" /></button>
           </div>
         )}
@@ -185,8 +188,7 @@ export default function Leads() {
                             { label: 'Schedule follow-up', icon: <CalendarPlus />, onClick: () => open({ kind: 'task', ref: { type: 'lead', id: l.id } }) },
                             { label: 'Send email', icon: <Mail />, onClick: () => toast({ title: 'Email composer opened', body: `To: ${l.email}` }) },
                             { label: 'Convert to deal', icon: <Briefcase />, onClick: () => { const d = useCRM.getState().convertLead(l.id); if (d) toast({ tone: 'success', title: 'Converted to deal', body: d.name, action: { label: 'View', onClick: () => nav(`/pipeline?deal=${d.id}`) } }); } },
-                            { divider: true },
-                            { label: 'Delete lead', icon: <Trash2 />, danger: true, onClick: () => { deleteLeads([l.id]); toast({ title: 'Lead deleted' }); } },
+                            ...(can('delete') ? [{ divider: true }, { label: 'Delete lead', icon: <Trash2 />, danger: true, onClick: () => { deleteLeads([l.id]); toast({ title: 'Lead deleted' }); } }] : [])
                           ]} />
                       </div>
                     </td>

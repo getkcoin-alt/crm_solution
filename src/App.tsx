@@ -11,10 +11,16 @@ import Tasks from '@/pages/Tasks';
 import Team from '@/pages/Team';
 import Reports from '@/pages/Reports';
 import Settings from '@/pages/Settings';
+import Login from '@/pages/Login';
+import { useSession } from '@/store/session';
 
 export default function App() {
+  const viewAs = useSession((s) => s.viewAs);
+  const signedIn = useSession((s) => s.signedIn);
+  if (!signedIn) return <Login />;
+  // Re-mount the workspace whenever the persona changes so every panel re-scopes.
   return (
-    <HashRouter>
+    <HashRouter key={viewAs}>
       <Routes>
         <Route element={<AppShell />}>
           <Route index element={<Dashboard />} />

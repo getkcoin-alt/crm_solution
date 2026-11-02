@@ -29,6 +29,8 @@ function bizTime(daysAgo: number, h0 = 8, h1 = 18) {
 
 /* ───────────────────────── Reps ───────────────────────── */
 export const CURRENT_USER_ID = 'rep_aisha';
+/** One demo login per panel: Admin, Sales Manager, Account Executive, SDR. */
+export const DEMO_PERSONAS = ['rep_aisha', 'rep_daniel', 'rep_marcus', 'rep_zara'] as const;
 const repDefs: [string, string, Rep['role'], string, Rep['team'], string, number, number, Rep['presence']][] = [
   ['aisha', 'Aisha Rahman', 'Admin', 'VP of Sales', 'Enterprise', 'Global', 0, 262, 'online'],
   ['daniel', 'Daniel Okafor', 'Sales Manager', 'Head of Enterprise', 'Enterprise', 'North America', 900_000, 210, 'online'],
@@ -384,7 +386,7 @@ export const tasks: Task[] = Array.from({ length: 86 }, (_, i) => {
   const ref = useLead
     ? (() => { const l = R.pick(leads.filter((x) => x.status !== 'Unqualified')); return { type: 'lead' as const, id: l.id, owner: l.ownerId }; })()
     : (() => { const c = R.pick(contacts); return { type: 'contact' as const, id: c.id, owner: c.ownerId }; })();
-  const ownerId = i < 22 ? CURRENT_USER_ID : ref.owner ?? R.pick(sellers).id;
+  const ownerId = i < 48 ? DEMO_PERSONAS[i % DEMO_PERSONAS.length]! : ref.owner ?? R.pick(sellers).id;
   return {
     id: `tk_${i + 1}`,
     title: R.pick(taskTitles[type]),

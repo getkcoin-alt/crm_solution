@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { LayoutGrid, Table2, X, Globe, MapPin, Users2, Phone, Building2, HeartPulse, Briefcase, Factory } from 'lucide-react';
+import { useScope } from '@/lib/access';
 import { useCRM } from '@/store/crm';
 import { usePhone } from '@/store/phone';
 import { PageHeader, RepChip, StageBadge } from '@/components/shared';
@@ -13,7 +14,8 @@ const tierTone = { Strategic: 'brand', Key: 'violet', Standard: 'neutral' } as c
 const healthTone = (h: number) => (h >= 75 ? 'success' : h >= 55 ? 'warning' : 'danger') as 'success' | 'warning' | 'danger';
 
 export default function Companies() {
-  const { companies, deals, contacts } = useCRM();
+  const scope = useScope();
+  const { companies, deals, contacts } = scope;
   const [params, setParams] = useSearchParams();
   const [view, setView] = useState<'grid' | 'table'>('grid');
   const [q, setQ] = useState('');

@@ -4,6 +4,8 @@ import { useCRM, ME } from '@/store/crm';
 import { usePrefs, applyTheme } from '@/store/prefs';
 import { toast } from '@/store/ui';
 import { PageHeader } from '@/components/shared';
+import { useSession, PERMISSIONS } from '@/store/session';
+import { useCan, useViewer } from '@/lib/access';
 import { TelephonySettings } from '@/components/calling/TelephonyPanel';
 import { ProviderMark } from '@/components/calling/TelephonyWizard';
 import { PROVIDERS } from '@/data/providers';
@@ -46,36 +48,34 @@ function Row({ title, desc, children, icon }: { title: string; desc?: string; ch
   );
 }
 
-const PERMS = ['View all leads', 'Edit others’ leads', 'Delete records', 'Export data', 'Manage pipeline stages', 'Listen to call recordings', 'Live call monitoring', 'View team reports', 'Manage users & billing'];
 const ROLES: Role[] = ['Admin', 'Sales Manager', 'Account Executive', 'SDR'];
-const defaultMatrix: Record<Role, boolean[]> = {
-  Admin: PERMS.map(() => true),
-  'Sales Manager': [true, true, false, true, true, true, true, true, false],
-  'Account Executive': [false, false, false, true, false, true, false, false, false],
-  SDR: [false, false, false, false, false, false, false, false, false],
-};
 
 export default function Settings() {
-  const [sec, setSec] = useState<Section>('profile');
+  const [secState, setSec] = useState<Section>('profile');
   const { reps, updateRep, stages } = useCRM();
   const me = reps.find((r) => r.id === ME)!;
   const prefs = usePrefs();
   const tel = useTelephony();
-  const [matrix, setMatrix] = useState(defaultMatrix);
+  const matrix = useSession((x) => x.matrix);
+  const setPerm = useSession((x) => x.setPerm);
+  const can = useCan();
+  const viewer = useViewer();
+  const allowed: Record<Section, boolean> = { profile: true, notifications: true, calling: true, workspace: true, users: can('manageUsers'), roles: can('manageUsers'), integrations: can('manageUsers'), pipeline: can('managePipeline') };
   const [notif, setNotif] = useState({ deal: true, missed: true, assigned: true, mention: true, digest: true, task: false });
   const [integ, setInteg] = useState<Record<string, boolean>>({ Gmail: true, 'Google Calendar': true, Slack: true, Zoom: false, 'Microsoft Teams': false, Zapier: false, LinkedIn: false, DocuSign: false });
   const [probs, setProbs] = useState(stages.map((s) => Math.round(s.probability * 100)));
   const save = () => toast({ tone: 'success', title: 'Settings saved' });
+  const sec: Section = allowed[secState] ? secState : 'profile';
 
   return (
     <div>
-      <PageHeader title="Settings" subtitle="Manage your profile, workspace, team access and calling configuration." />
+      <PageHeader title="Settings" subtitle={viewer.role === 'Admin' ? 'Manage your profile, workspace, team access and calling configuration.' : `Signed in as ${viewer.name} · ${viewer.role}. Workspace administration is managed by your admin.`} />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[220px_1fr]">
         <nav className="no-scrollbar -mx-1 flex gap-1 overflow-x-auto px-1 lg:sticky lg:top-20 lg:flex-col lg:self-start">
           {['Account', 'Workspace', 'Sales'].map((g) => (
             <div key={g} className="contents lg:block lg:pb-3">
               <div className="eyebrow hidden px-2 pb-1 lg:block">{g}</div>
-              {sections.filter((s) => s.group === g).map((s) => (
+              {sections.filter((s) => s.group === g && allowed[s.id]).map((s) => (
                 <button key={s.id} onClick={() => setSec(s.id)} className={cn('flex h-8 shrink-0 items-center gap-2 rounded-md px-2.5 text-[13px] font-medium transition lg:w-full', sec === s.id ? 'bg-surface text-fg shadow-[0_0_0_1px_rgb(var(--line-strong))]' : 'text-fg-2 hover:bg-sunken')}>
                   <s.icon className={cn('size-4', sec === s.id ? 'text-brand' : 'text-muted')} />{s.label}
                 </button>
@@ -97,7 +97,7 @@ export default function Settings() {
                 <Field label="Email"><Input defaultValue={me.email} /></Field>
                 <Field label="Direct line"><Input defaultValue={me.phone} /></Field>
                 <Field label="Timezone"><Select value="ny" onChange={() => {}} options={[{ value: 'ny', label: '(GMT-5) Eastern Time' }, { value: 'ldn', label: '(GMT+0) London' }, { value: 'ist', label: '(GMT+5:30) India Standard Time' }]} /></Field>
-                <Field label="Email signature"><Input defaultValue="Aisha Rahman · VP of Sales · leadVico" /></Field>
+                <Field label="Email signature"><Input key={me.id} defaultValue={`${me.name} · ${me.title} · leadVico`} /></Field>
               </div>
             </Section>
           )}
@@ -117,7 +117,7 @@ export default function Settings() {
                   ))}
                 </div>
               </Section>
-              <Section title="Workspace" desc="Applies to everyone in leadVico Inc." action={<Button variant="primary" size="sm" onClick={save}>Save</Button>}>
+              {can('manageUsers') && <Section title="Workspace" desc="Applies to everyone in leadVico Inc." action={<Button variant="primary" size="sm" onClick={save}>Save</Button>}>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Field label="Company name"><Input defaultValue="leadVico Inc." /></Field>
                   <Field label="Workspace URL"><Input defaultValue="app.leadvico.com" /></Field>
@@ -126,7 +126,7 @@ export default function Settings() {
                   </Field>
                   <Field label="Fiscal year starts"><Select value="jan" onChange={() => {}} options={[{ value: 'jan', label: 'January' }, { value: 'apr', label: 'April' }, { value: 'jul', label: 'July' }]} /></Field>
                 </div>
-              </Section>
+              </Section>}
             </>
           )}
 
@@ -150,15 +150,15 @@ export default function Settings() {
           )}
 
           {sec === 'roles' && (
-            <Section title="Roles & permissions" desc="Control what each role can see and do." action={<Button variant="primary" size="sm" onClick={save}>Save changes</Button>}>
+            <Section title="Roles & permissions" desc="Control what each role can see and do. Changes apply instantly to every panel." action={<Button size="sm" variant="ghost" onClick={() => { useSession.getState().resetMatrix(); toast({ title: 'Permissions reset to defaults' }); }}>Reset defaults</Button>}>
               <div className="-mx-5 -my-5 scroll-x">
                 <table className="w-full min-w-[640px] text-[13px]">
                   <thead className="border-b bg-surface-2"><tr><th className="h-10 pl-5 text-left text-[11.5px] font-medium text-muted">Permission</th>{ROLES.map((r) => <th key={r} className="px-3 text-center text-[11.5px] font-medium text-muted">{r}<div className="font-normal text-faint">{reps.filter((x) => x.role === r).length} users</div></th>)}</tr></thead>
-                  <tbody>{PERMS.map((p, i) => (
-                    <tr key={p} className="h-12 border-b border-line/70 last:border-0">
-                      <td className="pl-5 font-medium text-fg-2">{p}</td>
+                  <tbody>{PERMISSIONS.map((p) => (
+                    <tr key={p.key} className="h-14 border-b border-line/70 last:border-0">
+                      <td className="pl-5"><div className="font-medium text-fg-2">{p.label}</div><div className="text-[11px] text-faint">{p.desc}</div></td>
                       {ROLES.map((r) => (
-                        <td key={r} className="text-center"><div className="flex justify-center"><Switch size="sm" checked={matrix[r][i]!} onChange={(v) => { if (r === 'Admin') { toast({ title: 'Admins always have full access' }); return; } setMatrix({ ...matrix, [r]: matrix[r].map((x, j) => (j === i ? v : x)) }); }} /></div></td>
+                        <td key={r} className="text-center"><div className="flex justify-center"><Switch size="sm" checked={r === 'Admin' || matrix[r][p.key]} onChange={(v) => { if (r === 'Admin') { toast({ title: 'Admins always have full access' }); return; } setPerm(r, p.key, v); toast({ title: `${r}: ${p.label} ${v ? 'enabled' : 'disabled'}`, body: 'Applies instantly — switch panels with “View as” to see it.' }); }} /></div></td>
                       ))}
                     </tr>
                   ))}</tbody>
