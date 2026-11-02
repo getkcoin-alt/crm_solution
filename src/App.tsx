@@ -13,6 +13,7 @@ import Reports from '@/pages/Reports';
 import Settings from '@/pages/Settings';
 import Login from '@/pages/Login';
 import WhatsAppInbox from '@/pages/WhatsApp';
+import Sources from '@/pages/Sources';
 import { useSession } from '@/store/session';
 
 export default function App() {
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="companies" element={<Companies />} />
           <Route path="calls" element={<Calls />} />
           <Route path="whatsapp" element={<WhatsAppInbox />} />
+          <Route path="sources" element={<Sources />} />
           <Route path="tasks" element={<Tasks />} />
           <Route path="team" element={<Team />} />
           <Route path="reports" element={<Reports />} />

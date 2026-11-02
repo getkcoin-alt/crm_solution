@@ -52,7 +52,11 @@ export interface Contact {
 }
 
 export type LeadStatus = 'New' | 'Contacted' | 'Qualified' | 'Nurturing' | 'Unqualified' | 'Converted';
-export type LeadSource = 'Website' | 'Referral' | 'LinkedIn' | 'Webinar' | 'Cold outbound' | 'Trade show' | 'Partner' | 'Paid search';
+export type LeadSource =
+  | 'Website' | 'Referral' | 'LinkedIn' | 'Webinar' | 'Cold outbound' | 'Trade show' | 'Partner' | 'Paid search'
+  | 'IndiaMART' | 'JustDial' | 'TradeIndia' | 'Meta Lead Ads' | 'Google Ads' | '99acres' | 'MagicBricks' | 'WhatsApp' | 'Missed call' | 'Google Sheets' | 'API' | 'Email' | 'CSV import';
+
+export const ALL_SOURCES: LeadSource[] = ['Website', 'IndiaMART', 'JustDial', 'TradeIndia', 'Meta Lead Ads', 'Google Ads', 'LinkedIn', '99acres', 'MagicBricks', 'WhatsApp', 'Missed call', 'Referral', 'Webinar', 'Cold outbound', 'Trade show', 'Partner', 'Paid search', 'Google Sheets', 'API', 'Email', 'CSV import'];
 
 export interface Lead {
   id: string;

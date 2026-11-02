@@ -36,6 +36,7 @@ export function useNavAccess() {
     '/calls': true,
     '/tasks': true,
     '/whatsapp': true,
+    '/sources': role === 'Admin' || role === 'Sales Manager',
     '/team': role !== 'SDR',
     '/reports': can('teamReports'),
     '/settings': true,

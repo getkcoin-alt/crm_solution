@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, MessageCircle, Users2, KanbanSquare, Contact2, Building2, Phone, CalendarCheck2, Trophy, BarChart3, Settings, PanelLeftClose, PanelLeft, Sparkles, X,
+  LayoutDashboard, MessageCircle, Radio, Users2, KanbanSquare, Contact2, Building2, Phone, CalendarCheck2, Trophy, BarChart3, Settings, PanelLeftClose, PanelLeft, Sparkles, X,
 } from 'lucide-react';
 import { useCRM, ME } from '@/store/crm';
 import { useScope, useNavAccess, ROLE_TONE, ROLE_SHORT } from '@/lib/access';
@@ -49,6 +49,7 @@ export function Sidebar({ mobile }: { mobile?: boolean }) {
     { label: 'Workspace', items: [
       { to: '/', label: 'Dashboard', icon: LayoutDashboard },
       { to: '/leads', label: 'Leads', icon: Users2, badge: newLeads },
+      { to: '/sources', label: 'Lead sources', icon: Radio },
       { to: '/pipeline', label: 'Pipeline', icon: KanbanSquare },
       { to: '/contacts', label: 'Contacts', icon: Contact2 },
       { to: '/companies', label: 'Companies', icon: Building2 },

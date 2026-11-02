@@ -193,7 +193,7 @@ const pre = ['Apex','Crescent','Driftwood','Ember','Fable','Glacier','Harbor','I
 const suf = ['Labs','Systems','Health','Logistics','Analytics','Retail','Capital','Foods','Studios','Networks','Partners','Dynamics','Works','Clinics','Freight','Energy'];
 const leadIndustry: Record<string, string> = { Labs: 'Life Sciences', Systems: 'Software', Health: 'Healthcare', Logistics: 'Logistics', Analytics: 'Software', Retail: 'Retail', Capital: 'Financial Services', Foods: 'Consumer Goods', Studios: 'Media', Networks: 'Telecommunications', Partners: 'Professional Services', Dynamics: 'Manufacturing', Works: 'Manufacturing', Clinics: 'Healthcare', Freight: 'Logistics', Energy: 'Energy' };
 const cities: [string, string][] = [['New York','United States'],['San Francisco','United States'],['Austin','United States'],['Chicago','United States'],['London','United Kingdom'],['Manchester','United Kingdom'],['Berlin','Germany'],['Bengaluru','India'],['Mumbai','India'],['Toronto','Canada'],['Sydney','Australia'],['Boston','United States'],['Miami','United States'],['Atlanta','United States']];
-const sources: [LeadSource, number][] = [['Website', 26], ['Referral', 14], ['LinkedIn', 18], ['Webinar', 10], ['Cold outbound', 16], ['Trade show', 6], ['Partner', 6], ['Paid search', 12]];
+const sources: [LeadSource, number][] = [['Website', 22], ['IndiaMART', 14], ['Meta Lead Ads', 14], ['Google Ads', 10], ['JustDial', 8], ['WhatsApp', 9], ['Referral', 10], ['LinkedIn', 10], ['Missed call', 5], ['Webinar', 6], ['Cold outbound', 9], ['Trade show', 4], ['Partner', 4], ['Paid search', 4]];
 const statuses: [LeadStatus, number][] = [['New', 22], ['Contacted', 26], ['Qualified', 18], ['Nurturing', 16], ['Unqualified', 8], ['Converted', 10]];
 const tagPool = ['Enterprise', 'Inbound', 'Pricing page', 'Competitor user', 'Expansion', 'Decision maker', 'Demo requested', 'Event'];
 
@@ -203,8 +203,8 @@ export function computeScore(l: Pick<Lead, 'title' | 'employees' | 'source' | 's
   f.push({ label: senior ? 'Senior decision maker' : 'Practitioner-level title', points: senior ? 24 : 10 });
   const sz = l.employees > 3000 ? 22 : l.employees > 800 ? 16 : l.employees > 200 ? 10 : 5;
   f.push({ label: `Company size · ${l.employees.toLocaleString()} employees`, points: sz });
-  const srcPts: Record<LeadSource, number> = { Referral: 20, Website: 16, Webinar: 14, Partner: 15, 'Paid search': 11, LinkedIn: 10, 'Trade show': 12, 'Cold outbound': 6 };
-  f.push({ label: `Source · ${l.source}`, points: srcPts[l.source] });
+  const srcPts: Partial<Record<LeadSource, number>> = { Referral: 20, Website: 16, Webinar: 14, Partner: 15, 'Paid search': 11, LinkedIn: 10, 'Trade show': 12, 'Cold outbound': 6, IndiaMART: 14, JustDial: 11, TradeIndia: 11, 'Meta Lead Ads': 10, 'Google Ads': 13, WhatsApp: 17, 'Missed call': 15, '99acres': 13, MagicBricks: 13 };
+  f.push({ label: `Source · ${l.source}`, points: srcPts[l.source] ?? 10 });
   const days = (NOW - l.lastActivityAt) / DAY;
   const eng = days < 2 ? 22 : days < 7 ? 15 : days < 14 ? 8 : 2;
   f.push({ label: days < 2 ? 'Engaged in last 48h' : days < 7 ? 'Engaged this week' : 'Engagement cooling', points: eng });

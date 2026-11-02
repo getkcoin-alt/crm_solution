@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MessageCircle, Phone, Plus, Download, Upload, Star, ArrowUpDown, ArrowUp, ArrowDown, UserCheck, Trash2, Tag, Users2, SlidersHorizontal, Flame, Mail, X, CircleDot, Globe2, Gauge, MoreHorizontal, CalendarPlus, Briefcase } from 'lucide-react';
+import { Radio, MessageCircle, Phone, Plus, Download, Upload, Star, ArrowUpDown, ArrowUp, ArrowDown, UserCheck, Trash2, Tag, Users2, SlidersHorizontal, Flame, Mail, X, CircleDot, Globe2, Gauge, MoreHorizontal, CalendarPlus, Briefcase } from 'lucide-react';
 import { useCRM, ME } from '@/store/crm';
 import { useScope, useCan } from '@/lib/access';
 import { useWhatsApp } from '@/store/whatsapp';
@@ -12,7 +12,7 @@ import { Avatar, Badge, Button, Card, IconButton, ScoreRing, scoreTone, EmptySta
 import { Checkbox, FilterChip, SearchInput, Select, Tabs } from '@/components/ui/form';
 import { Menu, Modal } from '@/components/ui/overlay';
 import { cn, DAY, downloadCSV, money, relTime } from '@/lib/utils';
-import type { Lead, LeadSource, LeadStatus } from '@/types';
+import { ALL_SOURCES, type Lead, type LeadSource, type LeadStatus } from '@/types';
 
 type View = 'all' | 'mine' | 'hot' | 'unassigned' | 'new';
 type SortKey = 'name' | 'score' | 'company' | 'estValue' | 'lastActivityAt' | 'createdAt';
@@ -84,6 +84,7 @@ export default function Leads() {
         title="Leads"
         subtitle={`${leads.length} leads · ${counts.hot} hot · ${counts.unassigned} awaiting assignment`}
         actions={<>
+          {scope.role !== 'Account Executive' && scope.role !== 'SDR' && <Button icon={<Radio />} onClick={() => nav('/sources')}>Sources</Button>}
           {scope.role !== 'Account Executive' && scope.role !== 'SDR' && <Button icon={<Upload />} onClick={() => setImportOpen(true)}>Import</Button>}
           {can('export') && <Button icon={<Download />} onClick={() => { exportRows(filtered); toast({ tone: 'success', title: 'Export ready', body: `${filtered.length} leads exported to CSV` }); }}>Export</Button>}
           <Button variant="primary" icon={<Plus />} onClick={() => open({ kind: 'lead' })}>New lead</Button>
@@ -107,7 +108,7 @@ export default function Leads() {
           <SearchInput value={q} onChange={(v) => { setQ(v); setPage(0); }} placeholder="Search name, company, email…" className="w-full sm:w-64" />
           <FilterChip label="Status" icon={<CircleDot />} values={status} onChange={(v) => { setStatus(v); setPage(0); }} options={LEAD_STATUSES.map((s) => ({ value: s.value, label: s.value, hint: String(leads.filter((l) => l.status === s.value).length) }))} />
           <FilterChip label="Score" icon={<Gauge />} values={temp} onChange={(v) => { setTemp(v); setPage(0); }} options={[{ value: 'Hot', label: 'Hot (75+)' }, { value: 'Warm', label: 'Warm (50–74)' }, { value: 'Cold', label: 'Cold (<50)' }]} />
-          <FilterChip label="Source" icon={<Globe2 />} values={source} onChange={(v) => { setSource(v); setPage(0); }} options={(['Website', 'Referral', 'LinkedIn', 'Webinar', 'Cold outbound', 'Trade show', 'Partner', 'Paid search'] as LeadSource[]).map((s) => ({ value: s, label: s }))} />
+          <FilterChip label="Source" icon={<Globe2 />} values={source} onChange={(v) => { setSource(v); setPage(0); }} options={ALL_SOURCES.filter((x) => leads.some((l) => l.source === x)).map((x) => ({ value: x, label: x, hint: String(leads.filter((l) => l.source === x).length) }))} />
           <FilterChip label="Owner" icon={<Users2 />} values={owners} onChange={(v) => { setOwners(v); setPage(0); }} options={[{ value: '__none', label: 'Unassigned' }, ...(scope.admin ? reps : scope.peers).map((r) => ({ value: r.id, label: r.name, icon: <Avatar name={r.name} hue={r.hue} size={16} /> }))]} />
           {activeFilters > 0 && <button onClick={() => { setStatus([]); setSource([]); setOwners([]); setTemp([]); }} className="text-xs font-medium text-muted hover:text-fg">Clear all</button>}
           <span className="ml-auto hidden items-center gap-1.5 text-xs text-muted md:flex"><SlidersHorizontal className="size-3.5" />{filtered.length} results</span>

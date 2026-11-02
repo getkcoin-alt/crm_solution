@@ -7,11 +7,11 @@ import { Field, Input, Select, Textarea, Segmented } from './ui/form';
 import { RepSelect } from './shared';
 import { ME, resolveRef, useCRM } from '@/store/crm';
 import { useUI, toast } from '@/store/ui';
-import type { EntityRef, LeadSource, Stage, TaskType } from '@/types';
+import { ALL_SOURCES, type EntityRef, type LeadSource, type Stage, type TaskType } from '@/types';
 import { DAY, HOUR, fromCurrency, startOfDay } from '@/lib/utils';
 import { usePrefs } from '@/store/prefs';
 
-const SOURCES: LeadSource[] = ['Website', 'Referral', 'LinkedIn', 'Webinar', 'Cold outbound', 'Trade show', 'Partner', 'Paid search'];
+const SOURCES: LeadSource[] = ALL_SOURCES;
 const INDUSTRIES = ['Software', 'Healthcare', 'Financial Services', 'Logistics', 'Retail', 'Manufacturing', 'Media', 'Energy', 'Life Sciences', 'Professional Services', 'Telecommunications', 'Consumer Goods'];
 
 function LeadModal({ onClose }: { onClose: () => void }) {

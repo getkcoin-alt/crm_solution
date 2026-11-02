@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, Users2, KanbanSquare, Contact2, Building2, Phone, CalendarCheck2, Trophy, BarChart3, Settings, UserPlus, Briefcase, CalendarPlus, PhoneIncoming, Moon, Plug, Eye, MessageCircle, CornerDownLeft, Search, Handshake,
+  LayoutDashboard, Users2, KanbanSquare, Contact2, Building2, Phone, CalendarCheck2, Trophy, BarChart3, Settings, UserPlus, Briefcase, CalendarPlus, PhoneIncoming, Moon, Plug, Eye, MessageCircle, Radio, CornerDownLeft, Search, Handshake,
 } from 'lucide-react';
 import { useCRM } from '@/store/crm';
 import { useUI } from '@/store/ui';
@@ -51,6 +51,7 @@ export function CommandPalette() {
       { id: 'a2', group: 'Actions', label: 'Create deal', icon: <Briefcase />, run: () => openModal({ kind: 'deal' }) },
       { id: 'a3', group: 'Actions', label: 'Schedule follow-up', icon: <CalendarPlus />, run: () => openModal({ kind: 'task' }) },
       { id: 'a4', group: 'Actions', label: 'Simulate incoming call', sub: 'Demo: ring the softphone', icon: <PhoneIncoming />, run: () => usePhone.getState().simulateIncoming() },
+      { id: 'a9', group: 'Actions', label: 'Lead sources', sub: 'IndiaMART, Meta Ads, website, JustDial…', icon: <Radio />, run: () => nav('/sources') },
       { id: 'a7', group: 'Actions', label: 'Open WhatsApp inbox', sub: 'Chats via Scriwo', icon: <MessageCircle />, run: () => nav('/whatsapp') },
       { id: 'a8', group: 'Actions', label: 'Connect WhatsApp (Scriwo)', sub: 'No Meta Business API needed', icon: <MessageCircle />, run: () => useWhatsApp.getState().set({ wizard: true }) },
       { id: 'a6', group: 'Actions', label: 'Connect telephony provider', sub: 'Exotel, Knowlarity, MyOperator, Plivo, Twilio, Vonage', icon: <Plug />, run: () => useTelephony.getState().openWizard() },

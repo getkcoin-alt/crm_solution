@@ -12,7 +12,7 @@ import { Button, IconButton, Kbd } from '../ui/primitives';
 import { cn, duration, relTime } from '@/lib/utils';
 
 const titles: Record<string, string> = {
-  '': 'Dashboard', leads: 'Leads', pipeline: 'Pipeline', contacts: 'Contacts', companies: 'Companies', calls: 'Calling', whatsapp: 'WhatsApp', tasks: 'Follow-ups', team: 'Team', reports: 'Reports', settings: 'Settings',
+  '': 'Dashboard', leads: 'Leads', pipeline: 'Pipeline', contacts: 'Contacts', companies: 'Companies', calls: 'Calling', whatsapp: 'WhatsApp', sources: 'Lead sources', tasks: 'Follow-ups', team: 'Team', reports: 'Reports', settings: 'Settings',
 };
 
 function useTicker(active: boolean) {
