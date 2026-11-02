@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Phone, Mail, Users, StickyNote, ArrowRightLeft, Handshake, CalendarCheck2, Sparkles, UserPlus, Send, PhoneIncoming, PhoneOutgoing, PhoneMissed } from 'lucide-react';
+import { MessageCircle, Phone, Mail, Users, StickyNote, ArrowRightLeft, Handshake, CalendarCheck2, Sparkles, UserPlus, Send, PhoneIncoming, PhoneOutgoing, PhoneMissed } from 'lucide-react';
 import { useCRM, ME } from '@/store/crm';
 import { toast } from '@/store/ui';
 import type { ActivityType, EntityRef } from '@/types';
@@ -17,9 +17,10 @@ const meta: Record<ActivityType, { icon: typeof Phone; c: string }> = {
   deal: { icon: Handshake, c: 'text-brand bg-brand/10 ring-brand/20' },
   task: { icon: CalendarCheck2, c: 'text-[#0d9488] bg-[#14b8a6]/10 ring-[#14b8a6]/20' },
   created: { icon: UserPlus, c: 'text-muted bg-sunken ring-line-strong' },
+  whatsapp: { icon: MessageCircle, c: 'text-[#1fa855] bg-[#25d366]/10 ring-[#25d366]/25' },
 };
 
-type Filter = 'all' | 'call' | 'email' | 'note' | 'meeting';
+type Filter = 'all' | 'call' | 'whatsapp' | 'email' | 'note' | 'meeting';
 
 export function Timeline({ entity, stickyTop = 'top-14' }: { entity: EntityRef; stickyTop?: string }) {
   const all = useCRM((s) => s.activities);
@@ -72,8 +73,8 @@ export function Timeline({ entity, stickyTop = 'top-14' }: { entity: EntityRef; 
       </div>
 
       <div className="mt-5 flex items-center justify-between">
-        <span className="text-xs font-semibold text-fg-2">{items.length} activities</span>
-        <Segmented size="sm" value={filter} onChange={setFilter} options={[{ value: 'all', label: 'All' }, { value: 'call', label: 'Calls' }, { value: 'email', label: 'Emails' }, { value: 'meeting', label: 'Meetings' }, { value: 'note', label: 'Notes' }]} />
+        <span className="text-xs font-semibold text-fg-2">{items.length} {items.length === 1 ? 'activity' : 'activities'}</span>
+        <Segmented size="sm" value={filter} onChange={setFilter} options={[{ value: 'all', label: 'All' }, { value: 'call', label: 'Calls' }, { value: 'whatsapp', label: 'WhatsApp' }, { value: 'email', label: 'Emails' }, { value: 'meeting', label: 'Meetings' }, { value: 'note', label: 'Notes' }]} />
       </div>
 
       <div className="mt-3">

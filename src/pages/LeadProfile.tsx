@@ -13,6 +13,7 @@ import { Select, Tabs, Checkbox } from '@/components/ui/form';
 import { Menu } from '@/components/ui/overlay';
 import { LeadStatusBadge, LEAD_STATUSES, RepSelect, StageBadge, CallIcon, RepChip } from '@/components/shared';
 import { Timeline } from '@/components/Timeline';
+import { WhatsAppButton } from '@/components/whatsapp/Chat';
 import { RecordingPlayer } from '@/components/calling/RecordingPlayer';
 import { cn, dayLabel, duration, durationWords, fmtDate, fmtDateTime, fmtTime, money, relTime, sum } from '@/lib/utils';
 
@@ -77,6 +78,7 @@ export default function LeadProfile() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="primary" icon={<Phone />} onClick={() => dial(ref)}>Call</Button>
+            <WhatsAppButton entity={ref} />
             <Button icon={<Mail />} onClick={() => setTab('activity')}>Email</Button>
             <Button icon={<CalendarPlus />} onClick={() => open({ kind: 'task', ref })}>Follow-up</Button>
             {deal ? <Button icon={<Briefcase />} onClick={() => nav(`/pipeline?deal=${deal.id}`)}>View deal</Button> : <Button icon={<Briefcase />} onClick={convert}>Convert</Button>}

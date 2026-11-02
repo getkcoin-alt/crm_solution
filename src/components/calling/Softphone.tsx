@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Phone, PhoneOff, Mic, MicOff, Pause, Play, Grid3x3, ArrowRightLeft, Minimize2, Maximize2, Sparkles, StickyNote, Circle, PhoneIncoming, MessageSquareText, Clock3, CalendarPlus, Check,
+  MessageCircle, Phone, PhoneOff, Mic, MicOff, Pause, Play, Grid3x3, ArrowRightLeft, Minimize2, Maximize2, Sparkles, StickyNote, Circle, PhoneIncoming, MessageSquareText, Clock3, CalendarPlus, Check,
 } from 'lucide-react';
 import { usePhone } from '@/store/phone';
 import { usePrefs } from '@/store/prefs';
 import { useCRM, ME } from '@/store/crm';
 import { toast } from '@/store/ui';
 import { useTelephony } from '@/store/telephony';
+import { useWhatsApp } from '@/store/whatsapp';
 import { providerById } from '@/data/providers';
 import { transcriptScript } from '@/data/seed';
 import { Avatar, Button, Badge } from '../ui/primitives';
@@ -267,6 +268,11 @@ function WrapUp() {
   const talk = s.answered ? Math.round((s.endedAt - s.connectedAt) / 1000) : 0;
   const due = { tomorrow: startOfDay() + DAY + 10 * HOUR, '3d': startOfDay() + 3 * DAY + 10 * HOUR, week: startOfDay() + 7 * DAY + 10 * HOUR }[when];
   const aiSummary = s.answered && s.transcript.length > 3;
+  const wa = useWhatsApp();
+  const canRecap = wa.connected && wa.recapAfterCalls && s.answered && !!s.target?.ref;
+  const [recap, setRecap] = useState(true);
+  const firstName = s.target?.name.split(' ')[0] ?? 'there';
+  const recapText = `Hi ${firstName}, thanks for the call today! Quick recap: ${disp === 'Meeting booked' ? 'demo booked with your IT team for Thursday 2 PM' : disp === 'Call back later' ? 'I’ll call you back as discussed' : 'I’ll send the proposal and security pack shortly'}. Reply here anytime. — ${useCRM.getState().reps.find((r) => r.id === ME)?.name.split(' ')[0] ?? ''}, leadVico`;
 
   return (
     <Modal
@@ -278,7 +284,7 @@ function WrapUp() {
       description={<>{s.target?.name} · {s.direction} · <span className="num">{s.answered ? duration(talk) : 'not connected'}</span>{s.answered && s.recording && ' · recording saved'}</>}
       footer={<>
         <Button variant="ghost" onClick={s.discardWrapUp}>Discard</Button>
-        <Button variant="primary" onClick={() => s.completeWrapUp({ disposition: disp, notes: notes || (aiSummary ? 'See AI summary.' : ''), followUp: follow ? { title: `Follow up with ${s.target?.name?.split(' ')[0]} — ${disp.toLowerCase()}`, dueAt: due } : undefined })}>Save & log call</Button>
+        <Button variant="primary" onClick={() => { if (canRecap && recap && s.target?.ref) wa.send(s.target.ref, recapText, { auto: true, silentReply: true }); s.completeWrapUp({ disposition: disp, notes: notes || (aiSummary ? 'See AI summary.' : ''), followUp: follow ? { title: `Follow up with ${s.target?.name?.split(' ')[0]} — ${disp.toLowerCase()}`, dueAt: due } : undefined }); }}>Save & log call</Button>
       </>}
     >
       <div className="space-y-4">
@@ -305,6 +311,17 @@ function WrapUp() {
           <div className="label">Notes</div>
           <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="What happened on the call?" />
         </div>
+        {canRecap && (
+          <div className="rounded-xl bg-[#25d366]/[.05] p-3 shadow-[inset_0_0_0_1px_rgb(37_211_102/.3)]">
+            <label className="flex cursor-pointer items-center gap-2.5">
+              <input type="checkbox" checked={recap} onChange={(e) => setRecap(e.target.checked)} className="size-4 accent-[#25d366]" />
+              <MessageCircle className="size-4 text-[#1fa855]" />
+              <span className="text-[13px] font-medium">Send recap on WhatsApp</span>
+              <span className="ml-auto text-[11px] text-muted">via Scriwo</span>
+            </label>
+            {recap && <div className="ml-[26px] mt-2 rounded-lg bg-[#d9fdd3] px-3 py-2 text-[12.5px] leading-[1.45] text-[#111b21] dark:bg-[#005c4b] dark:text-[#e9edef]">{recapText}</div>}
+          </div>
+        )}
         <div className="rounded-xl p-3 shadow-[inset_0_0_0_1px_rgb(var(--line-strong))]">
           <label className="flex cursor-pointer items-center gap-2.5">
             <input type="checkbox" checked={follow} onChange={(e) => setFollow(e.target.checked)} className="size-4 accent-[rgb(var(--brand))]" />

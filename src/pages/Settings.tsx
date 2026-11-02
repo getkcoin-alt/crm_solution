@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { User, Building, Users2, ShieldCheck, KanbanSquare, Phone, Bell, Plug, Sun, Moon, Monitor, Check, Plus, GripVertical, Mic, Voicemail, MapPin, Sparkles, Lock } from 'lucide-react';
+import { MessageCircle, User, Building, Users2, ShieldCheck, KanbanSquare, Phone, Bell, Plug, Sun, Moon, Monitor, Check, Plus, GripVertical, Mic, Voicemail, MapPin, Sparkles, Lock } from 'lucide-react';
 import { useCRM, ME } from '@/store/crm';
 import { usePrefs, applyTheme } from '@/store/prefs';
 import { toast } from '@/store/ui';
@@ -10,12 +10,15 @@ import { TelephonySettings } from '@/components/calling/TelephonyPanel';
 import { ProviderMark } from '@/components/calling/TelephonyWizard';
 import { PROVIDERS } from '@/data/providers';
 import { useTelephony } from '@/store/telephony';
+import { useWhatsApp } from '@/store/whatsapp';
+import { WhatsAppSettings } from '@/components/whatsapp/WhatsAppSettings';
+import { ScriwoMark } from '@/components/whatsapp/WhatsAppWizard';
 import { Avatar, Badge, Button, Card } from '@/components/ui/primitives';
 import { Field, Input, Select, Switch } from '@/components/ui/form';
 import { CURRENCIES, cn, money, type Currency } from '@/lib/utils';
 import type { Role } from '@/types';
 
-type Section = 'profile' | 'workspace' | 'users' | 'roles' | 'pipeline' | 'calling' | 'notifications' | 'integrations';
+type Section = 'profile' | 'workspace' | 'users' | 'roles' | 'pipeline' | 'calling' | 'notifications' | 'integrations' | 'whatsapp';
 const sections: { id: Section; label: string; icon: typeof User; group: string }[] = [
   { id: 'profile', label: 'Profile', icon: User, group: 'Account' },
   { id: 'notifications', label: 'Notifications', icon: Bell, group: 'Account' },
@@ -24,6 +27,7 @@ const sections: { id: Section; label: string; icon: typeof User; group: string }
   { id: 'roles', label: 'Roles & permissions', icon: ShieldCheck, group: 'Workspace' },
   { id: 'pipeline', label: 'Pipeline stages', icon: KanbanSquare, group: 'Sales' },
   { id: 'calling', label: 'Calling', icon: Phone, group: 'Sales' },
+  { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle, group: 'Sales' },
   { id: 'integrations', label: 'Integrations', icon: Plug, group: 'Sales' },
 ];
 
@@ -56,11 +60,12 @@ export default function Settings() {
   const me = reps.find((r) => r.id === ME)!;
   const prefs = usePrefs();
   const tel = useTelephony();
+  const wa = useWhatsApp();
   const matrix = useSession((x) => x.matrix);
   const setPerm = useSession((x) => x.setPerm);
   const can = useCan();
   const viewer = useViewer();
-  const allowed: Record<Section, boolean> = { profile: true, notifications: true, calling: true, workspace: true, users: can('manageUsers'), roles: can('manageUsers'), integrations: can('manageUsers'), pipeline: can('managePipeline') };
+  const allowed: Record<Section, boolean> = { profile: true, notifications: true, calling: true, workspace: true, users: can('manageUsers'), roles: can('manageUsers'), integrations: can('manageUsers'), whatsapp: can('manageUsers'), pipeline: can('managePipeline') };
   const [notif, setNotif] = useState({ deal: true, missed: true, assigned: true, mention: true, digest: true, task: false });
   const [integ, setInteg] = useState<Record<string, boolean>>({ Gmail: true, 'Google Calendar': true, Slack: true, Zoom: false, 'Microsoft Teams': false, Zapier: false, LinkedIn: false, DocuSign: false });
   const [probs, setProbs] = useState(stages.map((s) => Math.round(s.probability * 100)));
@@ -205,8 +210,18 @@ export default function Settings() {
             </Section>
           )}
 
+          {sec === 'whatsapp' && <WhatsAppSettings />}
+
           {sec === 'integrations' && (
             <>
+            <Section title="Messaging" desc="WhatsApp without the Meta Business API.">
+              <div className="flex flex-wrap items-center gap-3 rounded-xl p-4 shadow-[0_0_0_1px_rgb(var(--line-strong))]">
+                <ScriwoMark size={36} />
+                <div className="min-w-0 flex-1"><div className="text-[13px] font-semibold">WhatsApp via Scriwo</div><div className="text-xs text-muted">Your own numbers, linked by QR · chats, broadcasts & timeline sync</div></div>
+                {wa.connected ? <Badge tone="success" dot>Connected</Badge> : <span className="text-xs text-faint">Not connected</span>}
+                <Button size="xs" variant={wa.connected ? 'ghost' : 'secondary'} onClick={() => (wa.connected ? setSec('whatsapp') : wa.set({ wizard: true }))}>{wa.connected ? 'Manage' : 'Connect'}</Button>
+              </div>
+            </Section>
             <Section title="Telephony" desc="Bring your own carrier and numbers — guided setup, no code.">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {PROVIDERS.map((x) => {

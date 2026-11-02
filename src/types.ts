@@ -138,7 +138,7 @@ export interface Task {
   notes?: string;
 }
 
-export type ActivityType = 'call' | 'email' | 'meeting' | 'note' | 'status' | 'deal' | 'task' | 'created';
+export type ActivityType = 'call' | 'email' | 'meeting' | 'note' | 'status' | 'deal' | 'task' | 'created' | 'whatsapp';
 export interface Activity {
   id: string;
   type: ActivityType;

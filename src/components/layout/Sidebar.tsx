@@ -1,9 +1,10 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Users2, KanbanSquare, Contact2, Building2, Phone, CalendarCheck2, Trophy, BarChart3, Settings, PanelLeftClose, PanelLeft, Sparkles, X,
+  LayoutDashboard, MessageCircle, Users2, KanbanSquare, Contact2, Building2, Phone, CalendarCheck2, Trophy, BarChart3, Settings, PanelLeftClose, PanelLeft, Sparkles, X,
 } from 'lucide-react';
 import { useCRM, ME } from '@/store/crm';
 import { useScope, useNavAccess, ROLE_TONE, ROLE_SHORT } from '@/lib/access';
+import { useWhatsApp, totalUnread } from '@/store/whatsapp';
 import { ViewAsMenu } from './ViewAs';
 import { Badge } from '../ui/primitives';
 import { usePrefs } from '@/store/prefs';
@@ -40,6 +41,7 @@ export function Sidebar({ mobile }: { mobile?: boolean }) {
   const access = useNavAccess();
   const dueToday = scope.tasks.filter((t) => !t.done && t.ownerId === ME && t.dueAt < startOfDay() + DAY).length;
   const newLeads = scope.leads.filter((l) => l.status === 'New').length;
+  const waUnread = totalUnread(useWhatsApp((s) => s.threads), scope.refIds);
   const phone = usePhone((s) => s.status);
   const loc = useLocation();
 
@@ -53,6 +55,7 @@ export function Sidebar({ mobile }: { mobile?: boolean }) {
     ] },
     { label: 'Engage', items: [
       { to: '/calls', label: 'Calling', icon: Phone, live: phone === 'connected' || phone === 'ringing' || phone === 'dialing' },
+      { to: '/whatsapp', label: 'WhatsApp', icon: MessageCircle, badge: waUnread },
       { to: '/tasks', label: 'Follow-ups', icon: CalendarCheck2, badge: dueToday },
     ] },
     { label: 'Insights', items: [

@@ -10,6 +10,7 @@ import { Avatar, Badge, Button, Card, CompanyLogo, IconButton, EmptyState, type 
 import { FilterChip, SearchInput } from '@/components/ui/form';
 import { Drawer } from '@/components/ui/overlay';
 import { Timeline } from '@/components/Timeline';
+import { WhatsAppButton } from '@/components/whatsapp/Chat';
 import { downloadCSV, money, relTime } from '@/lib/utils';
 import type { Contact } from '@/types';
 
@@ -117,6 +118,7 @@ export function ContactDrawer({ id, onClose }: { id: string; onClose: () => void
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           <Button variant="primary" size="sm" icon={<Phone />} onClick={() => dial({ type: 'contact', id: c.id })}>Call</Button>
+          <WhatsAppButton size="sm" entity={{ type: 'contact', id: c.id }} />
           <Button size="sm" icon={<Mail />} onClick={() => toast({ title: 'Email composer opened', body: c.email })}>Email</Button>
           <Button size="sm" icon={<Clock3 />} onClick={() => open({ kind: 'task', ref: { type: 'contact', id: c.id } })}>Follow-up</Button>
         </div>

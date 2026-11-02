@@ -35,6 +35,7 @@ export function useNavAccess() {
     '/companies': role !== 'SDR',
     '/calls': true,
     '/tasks': true,
+    '/whatsapp': true,
     '/team': role !== 'SDR',
     '/reports': can('teamReports'),
     '/settings': true,

@@ -5,6 +5,8 @@ import { Topbar } from './Topbar';
 import { CommandPalette } from './CommandPalette';
 import { Softphone } from '../calling/Softphone';
 import { TelephonyWizard } from '../calling/TelephonyWizard';
+import { WhatsAppWizard } from '../whatsapp/WhatsAppWizard';
+import { WhatsAppDrawer } from '../whatsapp/Chat';
 import { GlobalModals } from '../modals';
 import { Toaster } from '../shared';
 import { useUI } from '@/store/ui';
@@ -60,6 +62,8 @@ export function AppShell() {
       </div>
       <Softphone />
       <TelephonyWizard />
+      <WhatsAppWizard />
+      <WhatsAppDrawer />
       <CommandPalette />
       <GlobalModals />
       <Toaster />

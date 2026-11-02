@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Phone, Plus, Download, Upload, Star, ArrowUpDown, ArrowUp, ArrowDown, UserCheck, Trash2, Tag, Users2, SlidersHorizontal, Flame, Mail, X, CircleDot, Globe2, Gauge, MoreHorizontal, CalendarPlus, Briefcase } from 'lucide-react';
+import { MessageCircle, Phone, Plus, Download, Upload, Star, ArrowUpDown, ArrowUp, ArrowDown, UserCheck, Trash2, Tag, Users2, SlidersHorizontal, Flame, Mail, X, CircleDot, Globe2, Gauge, MoreHorizontal, CalendarPlus, Briefcase } from 'lucide-react';
 import { useCRM, ME } from '@/store/crm';
 import { useScope, useCan } from '@/lib/access';
+import { useWhatsApp } from '@/store/whatsapp';
+import { BroadcastModal } from '@/components/whatsapp/BroadcastModal';
 import { usePhone } from '@/store/phone';
 import { useUI, toast } from '@/store/ui';
 import { PageHeader, LeadStatusBadge, RepChip, LEAD_STATUSES } from '@/components/shared';
@@ -33,6 +35,7 @@ export default function Leads() {
   const [sel, setSel] = useState<string[]>([]);
   const [page, setPage] = useState(0);
   const [importOpen, setImportOpen] = useState(false);
+  const [broadcast, setBroadcast] = useState<string[] | null>(null);
 
   const views: Record<View, (l: Lead) => boolean> = {
     all: () => true,
@@ -118,6 +121,7 @@ export default function Leads() {
               items={reps.map((r) => ({ label: r.name, icon: <Avatar name={r.name} hue={r.hue} size={16} />, onClick: () => { bulkUpdateLeads(sel, { ownerId: r.id }); toast({ tone: 'success', title: `${sel.length} leads assigned`, body: `Routed to ${r.name}` }); setSel([]); } }))} />}
             <Menu align="start" trigger={({ toggle }) => <Button size="sm" icon={<Tag />} onClick={toggle}>Set status</Button>}
               items={LEAD_STATUSES.map((s) => ({ label: s.value, onClick: () => { bulkUpdateLeads(sel, { status: s.value }); toast({ tone: 'success', title: 'Status updated', body: `${sel.length} leads → ${s.value}` }); setSel([]); } }))} />
+            <Button size="sm" icon={<MessageCircle className="!text-[#1fa855]" />} onClick={() => setBroadcast(sel)}>WhatsApp</Button>
             <Button size="sm" icon={<Mail />} onClick={() => { toast({ title: 'Sequence enrolled', body: `${sel.length} leads added to “Q4 Re-engagement” sequence` }); setSel([]); }}>Add to sequence</Button>
             {can('export') && <Button size="sm" icon={<Download />} onClick={() => exportRows(leads.filter((l) => sel.includes(l.id)))}>Export</Button>}
             {can('delete') && <Button size="sm" variant="ghost" className="!text-danger" icon={<Trash2 />} onClick={() => { const ids = sel; deleteLeads(ids); setSel([]); toast({ title: `${ids.length} leads deleted` }); }}>Delete</Button>}
@@ -186,6 +190,7 @@ export default function Leads() {
                         <Menu trigger={({ toggle }) => <IconButton label="More" size="sm" onClick={toggle}><MoreHorizontal className="size-4" /></IconButton>}
                           items={[
                             { label: 'Schedule follow-up', icon: <CalendarPlus />, onClick: () => open({ kind: 'task', ref: { type: 'lead', id: l.id } }) },
+                            { label: 'Send WhatsApp', icon: <MessageCircle />, onClick: () => useWhatsApp.getState().openChat({ type: 'lead', id: l.id }) },
                             { label: 'Send email', icon: <Mail />, onClick: () => toast({ title: 'Email composer opened', body: `To: ${l.email}` }) },
                             { label: 'Convert to deal', icon: <Briefcase />, onClick: () => { const d = useCRM.getState().convertLead(l.id); if (d) toast({ tone: 'success', title: 'Converted to deal', body: d.name, action: { label: 'View', onClick: () => nav(`/pipeline?deal=${d.id}`) } }); } },
                             ...(can('delete') ? [{ divider: true }, { label: 'Delete lead', icon: <Trash2 />, danger: true, onClick: () => { deleteLeads([l.id]); toast({ title: 'Lead deleted' }); } }] : [])
@@ -210,6 +215,7 @@ export default function Leads() {
       </Card>
 
       <ImportModal open={importOpen} onClose={() => setImportOpen(false)} />
+      {broadcast && <BroadcastModal refs={broadcast.map((id) => ({ type: 'lead' as const, id }))} onClose={() => { setBroadcast(null); setSel([]); }} />}
     </div>
   );
 }
