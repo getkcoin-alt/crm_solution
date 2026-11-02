@@ -7,6 +7,8 @@ import { usePhone } from '@/store/phone';
 import { usePrefs } from '@/store/prefs';
 import { useCRM } from '@/store/crm';
 import { toast } from '@/store/ui';
+import { useTelephony } from '@/store/telephony';
+import { providerById } from '@/data/providers';
 import { transcriptScript } from '@/data/seed';
 import { Avatar, Button, Badge } from '../ui/primitives';
 import { Textarea } from '../ui/form';
@@ -126,7 +128,11 @@ function ActiveCall() {
   }, [connected, s.onHold, liveTranscript]);
   useEffect(() => { scroller.current?.scrollTo({ top: 9e9, behavior: 'smooth' }); }, [s.transcript.length]);
 
+  const tel = useTelephony.getState();
+  const prov = providerById(tel.provider);
   if (!s.target) return null;
+  const sinceReq = (now - s.requestedAt) / 1000;
+  const dialLabel = s.direction === 'inbound' ? 'Connecting' : prov && tel.mode === 'bridge' && tel.myMobile ? (sinceReq < 1.6 ? 'Ringing your mobile' : 'Connecting customer') : 'Dialing';
   const elapsed = connected ? (now - s.connectedAt) / 1000 : 0;
   const href = s.target.ref ? (s.target.ref.type === 'lead' ? `/leads/${s.target.ref.id}` : `/contacts?id=${s.target.ref.id}`) : undefined;
 
@@ -159,9 +165,9 @@ function ActiveCall() {
           <div className={cn('absolute inset-0', connected ? 'bg-[radial-gradient(120%_90%_at_100%_0%,rgb(34_160_107/.28),transparent_60%)]' : 'bg-[radial-gradient(120%_90%_at_100%_0%,rgb(88_86_238/.35),transparent_60%)]')} />
           <div className="relative flex items-center justify-between">
             <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-white/55">
-              {connected ? <><span className="size-1.5 animate-blink rounded-full bg-success" />{s.onHold ? 'On hold' : 'Connected'}</> : <><span className="size-1.5 animate-blink rounded-full bg-brand" />{s.direction === 'outbound' ? 'Dialing' : 'Connecting'}</>}
+              {connected ? <><span className="size-1.5 animate-blink rounded-full bg-success" />{s.onHold ? 'On hold' : 'Connected'}</> : <><span className="size-1.5 animate-blink rounded-full bg-brand" />{dialLabel}</>}
               <span className="text-white/30">·</span>
-              <span className="normal-case tracking-normal">{s.direction === 'outbound' ? 'Outbound' : 'Inbound'}</span>
+              <span className="normal-case tracking-normal">{s.direction === 'outbound' ? 'Outbound' : 'Inbound'}{prov ? ` · via ${prov.name}` : ' · demo line'}</span>
             </div>
             <div className="flex items-center gap-1">
               {s.recording && connected && <span className="mr-1 flex items-center gap-1 rounded bg-danger/20 px-1.5 py-0.5 text-[10px] font-bold text-[#ff8a93]"><Circle className="size-2 animate-blink fill-current" />REC</span>}

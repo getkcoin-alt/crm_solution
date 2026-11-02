@@ -26,6 +26,7 @@ Live demo: https://demo.leadvico.com (deployed on Vercel from `main`).
 | **Follow-ups** | Grouped task list (overdue/today/tomorrow/later), snooze/reschedule, week calendar with a "now" line |
 | **Team** | Podium, rep cards with quota attainment, sortable leaderboard, rep drawer with activity chart, invite teammates |
 | **Reports** | Sales performance, calling analytics, conversion funnel and source quality, forecast (commit/best case), CSV export |
+| **Telephony integration** | Guided setup for Exotel, Knowlarity, MyOperator, Plivo, Twilio and Vonage: provider picker, credentials with “where to find these” hints, connection check, number import and default caller ID, webhook URL, calling mode (via my mobile, browser, or SIM app) with mobile number verification by code. Opened from the Dashboard banner, Calling page, Settings → Calling / Integrations, or ⌘K |
 | **Settings** | Profile, theme (light/dark/system), workspace currency (USD/EUR/GBP/INR, applied across the app), users and roles, permission matrix, pipeline stages, calling configuration, notifications, integrations |
 
 Shortcuts: `⌘K` command palette · `L` new lead · `D` new deal · `T` new task · `C` calling.

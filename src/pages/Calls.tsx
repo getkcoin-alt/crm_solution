@@ -11,6 +11,8 @@ import { Avatar, Badge, Button, Card, CardHeader, IconButton, ScoreRing, EmptySt
 import { FilterChip, SearchInput, Select, Tabs } from '@/components/ui/form';
 import { Keypad } from '@/components/calling/Softphone';
 import { RecordingPlayer } from '@/components/calling/RecordingPlayer';
+import { TelephonyBanner } from '@/components/calling/TelephonyPanel';
+import { useTelephony } from '@/store/telephony';
 import { cn, DAY, dayLabel, duration, durationWords, fmtTime, pct, startOfDay, sum } from '@/lib/utils';
 import type { EntityRef } from '@/types';
 
@@ -18,7 +20,8 @@ type Tab = 'queue' | 'log' | 'missed';
 
 function Dialer() {
   const [num, setNum] = useState('');
-  const [callerId, setCallerId] = useState('main');
+  const tel = useTelephony();
+  const [callerId, setCallerId] = useState('default');
   const { leads, contacts } = useCRM();
   const dial = usePhone((s) => s.dial);
   const status = usePhone((s) => s.status);
@@ -44,7 +47,7 @@ function Dialer() {
       <div className="flex items-center justify-between border-b px-4 py-3">
         <div className="flex items-center gap-2 text-[13px] font-semibold"><Phone className="size-4 text-muted" />Dialer</div>
         <Select size="sm" value={callerId} onChange={setCallerId} align="end" width={250} className="!w-auto"
-          options={[{ value: 'main', label: 'Sales · +1 415 555 0100' }, { value: 'local', label: 'Local presence (auto)' }, { value: 'uk', label: 'London · +44 20 7946 0100' }]} />
+          options={tel.numbers.length ? [{ value: 'default', label: `Default · ${tel.defaultNumber}` }, ...tel.numbers.filter((n) => n.number !== tel.defaultNumber).map((n) => ({ value: n.number, label: `${n.label} · ${n.number}` })), { value: 'local', label: 'Local presence (auto)' }] : [{ value: 'default', label: 'Demo line (simulated)' }]} />
       </div>
       <div className="p-4">
         <div className="relative">
@@ -284,6 +287,7 @@ export default function Calls() {
           <Button icon={<PhoneIncoming />} disabled={status !== 'idle'} onClick={() => simulate()}>Simulate incoming call</Button>
         </>}
       />
+      <TelephonyBanner />
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
         <StatTile label="Calls today" value={today.length} sub={<><span className="num">{mine.length}</span> by you</>} icon={<PhoneCall />} accent="#5856ee" />
         <StatTile label="Connect rate" value={pct(conn.length / Math.max(1, today.length))} sub="Team avg 58%" icon={<Activity />} accent="#22a06b" />

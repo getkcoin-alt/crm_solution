@@ -4,6 +4,7 @@ import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { CommandPalette } from './CommandPalette';
 import { Softphone } from '../calling/Softphone';
+import { TelephonyWizard } from '../calling/TelephonyWizard';
 import { GlobalModals } from '../modals';
 import { Toaster } from '../shared';
 import { useUI } from '@/store/ui';
@@ -52,6 +53,7 @@ export function AppShell() {
         </main>
       </div>
       <Softphone />
+      <TelephonyWizard />
       <CommandPalette />
       <GlobalModals />
       <Toaster />

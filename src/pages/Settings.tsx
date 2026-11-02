@@ -4,6 +4,10 @@ import { useCRM, ME } from '@/store/crm';
 import { usePrefs, applyTheme } from '@/store/prefs';
 import { toast } from '@/store/ui';
 import { PageHeader } from '@/components/shared';
+import { TelephonySettings } from '@/components/calling/TelephonyPanel';
+import { ProviderMark } from '@/components/calling/TelephonyWizard';
+import { PROVIDERS } from '@/data/providers';
+import { useTelephony } from '@/store/telephony';
 import { Avatar, Badge, Button, Card } from '@/components/ui/primitives';
 import { Field, Input, Select, Switch } from '@/components/ui/form';
 import { CURRENCIES, cn, money, type Currency } from '@/lib/utils';
@@ -56,9 +60,10 @@ export default function Settings() {
   const { reps, updateRep, stages } = useCRM();
   const me = reps.find((r) => r.id === ME)!;
   const prefs = usePrefs();
+  const tel = useTelephony();
   const [matrix, setMatrix] = useState(defaultMatrix);
   const [notif, setNotif] = useState({ deal: true, missed: true, assigned: true, mention: true, digest: true, task: false });
-  const [integ, setInteg] = useState<Record<string, boolean>>({ Gmail: true, 'Google Calendar': true, Slack: true, Zoom: false, 'Microsoft Teams': false, Twilio: true, Zapier: false, LinkedIn: false, DocuSign: false });
+  const [integ, setInteg] = useState<Record<string, boolean>>({ Gmail: true, 'Google Calendar': true, Slack: true, Zoom: false, 'Microsoft Teams': false, Zapier: false, LinkedIn: false, DocuSign: false });
   const [probs, setProbs] = useState(stages.map((s) => Math.round(s.probability * 100)));
   const save = () => toast({ tone: 'success', title: 'Settings saved' });
 
@@ -181,17 +186,13 @@ export default function Settings() {
 
           {sec === 'calling' && (
             <>
-              <Section title="Calling" desc="Configure the integrated dialer for your whole team.">
+              <TelephonySettings />
+              <Section title="Call settings" desc="Applies to the whole team, on any provider.">
                 <Row icon={<Mic />} title="Record calls automatically" desc="Recordings are stored for 12 months and attached to the timeline."><Switch checked={prefs.recordCalls} onChange={(v) => prefs.set({ recordCalls: v })} /></Row>
                 <Row icon={<Sparkles />} title="Live transcription & Vico AI" desc="Real-time transcript, talk-ratio and next-step suggestions during calls."><Switch checked={prefs.liveTranscript} onChange={(v) => prefs.set({ liveTranscript: v })} /></Row>
                 <Row icon={<MapPin />} title="Local presence dialing" desc="Show a local caller ID matching the prospect’s area code."><Switch checked onChange={() => toast({ title: 'Local presence is included in your plan' })} /></Row>
                 <Row icon={<Voicemail />} title="Voicemail drop" desc="Leave a pre-recorded voicemail with one click."><Switch checked onChange={() => {}} /></Row>
                 <Row icon={<ShieldCheck />} title="Recording consent message" desc="Plays “This call may be recorded for quality purposes.”"><Switch checked onChange={() => {}} /></Row>
-              </Section>
-              <Section title="Phone numbers" desc="Numbers available as caller ID." action={<Button size="sm" icon={<Plus />} onClick={() => toast({ title: 'Number search opened' })}>Buy number</Button>}>
-                {[['+1 415 555 0100', 'Sales main line', 'US · San Francisco', 'Default'], ['+1 212 555 0142', 'Enterprise team', 'US · New York', ''], ['+44 20 7946 0100', 'EMEA line', 'UK · London', ''], ['+91 80 4719 0100', 'APAC line', 'India · Bengaluru', '']].map(([n, l, loc, d]) => (
-                  <Row key={n} icon={<Phone />} title={n!} desc={`${l} · ${loc}`}>{d ? <Badge tone="brand">{d}</Badge> : <Button size="xs" variant="ghost" onClick={() => toast({ title: `${n} set as default` })}>Make default</Button>}</Row>
-                ))}
               </Section>
             </>
           )}
@@ -205,13 +206,34 @@ export default function Settings() {
           )}
 
           {sec === 'integrations' && (
-            <Section title="Integrations" desc="Connect the tools your team already uses.">
+            <>
+            <Section title="Telephony" desc="Bring your own carrier and numbers — guided setup, no code.">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {PROVIDERS.map((x) => {
+                  const on = tel.provider === x.id;
+                  return (
+                    <div key={x.id} className={cn('flex flex-col rounded-xl p-4', on ? 'shadow-[0_0_0_1.5px_rgb(var(--success)/.6)]' : 'shadow-[0_0_0_1px_rgb(var(--line-strong))]')}>
+                      <div className="flex items-center gap-3">
+                        <ProviderMark p={x} />
+                        <div className="min-w-0 flex-1"><div className="text-[13px] font-semibold">{x.name}</div><div className="truncate text-xs text-muted">{x.tagline}</div></div>
+                        <Badge>{x.region}</Badge>
+                      </div>
+                      <div className="mt-4 flex items-center justify-between">
+                        {on ? <Badge tone="success" dot>Connected</Badge> : <span className="text-xs text-faint">{tel.provider ? 'Switch provider' : 'Not connected'}</span>}
+                        <Button size="xs" variant={on ? 'ghost' : 'secondary'} onClick={() => tel.openWizard(x.id)}>{on ? 'Manage' : 'Connect'}</Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Section>
+            <Section title="Apps" desc="Connect the tools your team already uses.">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {Object.entries(integ).map(([name, on], i) => (
                   <div key={name} className="flex flex-col rounded-xl p-4 shadow-[0_0_0_1px_rgb(var(--line-strong))]">
                     <div className="flex items-center gap-3">
                       <span className="flex size-9 items-center justify-center rounded-lg text-sm font-bold text-white" style={{ background: `hsl(${(i * 67 + 210) % 360} 55% 50%)` }}>{name[0]}</span>
-                      <div className="min-w-0 flex-1"><div className="text-[13px] font-semibold">{name}</div><div className="text-xs text-muted">{['Email sync & tracking', 'Meeting scheduling', 'Deal alerts in channels', 'Video meetings', 'Video meetings', 'Voice & SMS carrier', 'Workflow automation', 'Prospect enrichment', 'E-signatures'][i]}</div></div>
+                      <div className="min-w-0 flex-1"><div className="text-[13px] font-semibold">{name}</div><div className="text-xs text-muted">{['Email sync & tracking', 'Meeting scheduling', 'Deal alerts in channels', 'Video meetings', 'Video meetings', 'Workflow automation', 'Prospect enrichment', 'E-signatures'][i]}</div></div>
                     </div>
                     <div className="mt-4 flex items-center justify-between">
                       {on ? <Badge tone="success" dot>Connected</Badge> : <span className="text-xs text-faint">Not connected</span>}
@@ -221,6 +243,7 @@ export default function Settings() {
                 ))}
               </div>
             </Section>
+            </>
           )}
         </div>
       </div>

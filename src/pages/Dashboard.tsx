@@ -8,6 +8,7 @@ import { revenueHistory, QUARTER_START } from '@/data/seed';
 import { Avatar, Badge, Button, Card, CardHeader, Delta, Progress, ScoreRing, IconButton } from '@/components/ui/primitives';
 import { Segmented, Checkbox } from '@/components/ui/form';
 import { ChartTooltip, Legend, Sparkline, CallIcon, RepChip } from '@/components/shared';
+import { TelephonyBanner } from '@/components/calling/TelephonyPanel';
 import { cn, DAY, money, num, pct, relTime, startOfDay, sum, fmtTime, toCurrency, downloadCSV } from '@/lib/utils';
 
 type Range = '7' | '30' | 'qtd';
@@ -124,6 +125,8 @@ export default function Dashboard() {
           <Button icon={<Download />} onClick={() => downloadCSV('leadvico-revenue.csv', revenueHistory.map((r) => ({ month: r.month, won_usd: r.won, target_usd: r.target, pipeline_usd: r.pipeline })))}>Export</Button>
         </div>
       </div>
+
+      <TelephonyBanner dismissible />
 
       {/* KPI row */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
