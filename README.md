@@ -8,7 +8,7 @@ npm run dev        # http://localhost:5173
 npm run build      # static build in dist/ (deploys to any static host)
 ```
 
-Live demo: https://demo.leadvico.com (deployed on Vercel from `main`).
+Live demo: https://demo.leadvico.com (deployed on Vercel from `main`). The whole site sits behind a server-side login (`middleware.ts`, Vercel Routing Middleware). To change the credentials without touching code, set `DEMO_USERNAME`, `DEMO_PASSWORD` and `DEMO_AUTH_SECRET` in the Vercel project's environment variables.
 
 **Stack:** React 19 · TypeScript · Vite · Tailwind CSS · Zustand · Recharts · lucide-react. There is no backend. The data comes from a seeded generator (`src/data/seed.ts`), and its timestamps are set relative to the current time so the workspace always looks current. Reload the page to reset the demo.
 

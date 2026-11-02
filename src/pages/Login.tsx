@@ -61,7 +61,7 @@ export default function Login() {
             </Field>
             <Button type="submit" variant="primary" size="lg" className="w-full" iconRight={<ArrowRight />}>Sign in</Button>
           </form>
-          <p className="mt-6 text-center text-[11.5px] text-faint">Demo environment · sample data resets on reload</p>
+          <p className="mt-6 text-center text-[11.5px] text-faint">Demo environment · sample data resets on reload · <a href="/__auth/logout" className="font-medium text-muted hover:text-fg hover:underline">Log out of demo</a></p>
         </div>
       </div>
       <Toaster />

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Check, ChevronsUpDown, LogOut, Eye, ShieldCheck, Lock, ArrowLeft } from 'lucide-react';
+import { Check, ChevronsUpDown, LogOut, Users, Eye, ShieldCheck, Lock, ArrowLeft } from 'lucide-react';
 import { useCRM } from '@/store/crm';
 import { PERSONAS, useSession } from '@/store/session';
 import { usePhone } from '@/store/phone';
@@ -52,7 +52,8 @@ export function ViewAsMenu({ trigger }: { trigger: (p: { open: boolean; toggle: 
           <div className="flex items-center gap-1.5 px-2 pb-1.5 pt-1.5"><Eye className="size-3.5 text-muted" /><span className="eyebrow">View as</span></div>
           <PersonaList compact onPick={(id) => { close(); switchPersona(id); }} />
           <div className="mx-1 my-1 h-px bg-line" />
-          <button onClick={() => { close(); signOut(); }} className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-sm text-fg-2 hover:bg-sunken"><LogOut className="size-4 text-muted" />Sign out</button>
+          <button onClick={() => { close(); signOut(); }} className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-sm text-fg-2 hover:bg-sunken"><Users className="size-4 text-muted" />Switch account</button>
+          <button onClick={() => { close(); window.location.href = '/__auth/logout'; }} className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-sm text-fg-2 hover:bg-sunken"><LogOut className="size-4 text-muted" />Log out of demo</button>
         </div>
       )}
     </Popover>
